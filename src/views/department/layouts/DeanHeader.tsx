@@ -54,7 +54,7 @@ const DeanHeader = ({ isSidebarOpen, setIsSidebarOpen, isSidebarCollapsed, setIs
     localStorage.removeItem('accessToken');
     localStorage.removeItem('user');
     toast.success('Logged out successfully!');
-    navigate('/facultyscheduler/user-login');
+    navigate('/user-login');
     setIsProfileOpen(false);
   };
 

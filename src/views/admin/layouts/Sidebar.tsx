@@ -25,12 +25,12 @@ function Sidebar({ isOpen, setIsOpen, isCollapsed }: SidebarProps) {
   }, []);
 
   const navLinks = [
-    { href: "/facultyscheduler/admin/user-dashboard", label: "Dashboard", icon: <LayoutDashboardIcon size={20} /> },
-    { href: "/facultyscheduler/admin/curriculum-management", label: "Curriculum", icon: <BookOpen size={20} /> },
-    { href: "/facultyscheduler/admin/faculty", label: "Faculty", icon: <Users size={20} /> },
-    // { href: "/facultyscheduler/admin/faculty-loading", label: "Faculty Loading", icon: <Calendar size={20} /> },
-    { href: "/facultyscheduler/admin/room", label: "Classroom", icon: <Building2 size={20} /> },
-    { href: "/facultyscheduler/admin/reports", label: "Reports", icon: <FileText size={20} /> },
+    { href: "/admin/user-dashboard", label: "Dashboard", icon: <LayoutDashboardIcon size={20} /> },
+    { href: "/admin/curriculum-management", label: "Curriculum", icon: <BookOpen size={20} /> },
+    { href: "/admin/faculty", label: "Faculty", icon: <Users size={20} /> },
+    // { href: "/admin/faculty-loading", label: "Faculty Loading", icon: <Calendar size={20} /> },
+    { href: "/admin/room", label: "Classroom", icon: <Building2 size={20} /> },
+    { href: "/admin/reports", label: "Reports", icon: <FileText size={20} /> },
   ];
 
   const isRouteActive = (pathname: string, href: string) => {
@@ -43,7 +43,7 @@ function Sidebar({ isOpen, setIsOpen, isCollapsed }: SidebarProps) {
     const token = localStorage.getItem('accessToken');
     if (!token) {
         localStorage.removeItem('user');
-        navigate('/facultyscheduler/user-login');
+        navigate('/user-login');
         return;
     }
     try {
@@ -55,7 +55,7 @@ function Sidebar({ isOpen, setIsOpen, isCollapsed }: SidebarProps) {
     } finally {
         localStorage.removeItem('accessToken');
         localStorage.removeItem('user');
-        navigate('/facultyscheduler/user-login');
+        navigate('/user-login');
     }
   };
 
@@ -99,7 +99,7 @@ function Sidebar({ isOpen, setIsOpen, isCollapsed }: SidebarProps) {
         </button>
         <div className="flex flex-col h-full overflow-hidden">
           <div className="p-4 border-b border-white/10 shrink-0">
-            <Link to="/facultyscheduler/admin/user-dashboard" className="flex items-center gap-3">
+            <Link to="/admin/user-dashboard" className="flex items-center gap-3">
               <div className="w-10 h-10 bg-gradient-to-br from-fuchsia-600 to-violet-600 rounded-lg flex items-center justify-center text-xl font-bold text-white shadow-lg shrink-0">FS</div>
               <AnimatePresence>
                 {!hideText && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}><h3 className="font-bold text-lg text-white whitespace-nowrap">Admin Panel</h3></motion.div>}

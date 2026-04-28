@@ -43,7 +43,7 @@ import { Link } from 'react-router-dom';
           </ul>
           {recentActivities.length > 2 && (
             <div className="text-right mt-3">
-              <Link to="/facultyscheduler/admin/activities" className="text-sm font-semibold text-indigo-600 hover:underline">See more</Link>
+              <Link to="/admin/activities" className="text-sm font-semibold text-indigo-600 hover:underline">See more</Link>
             </div>
           )}
         </motion.div>

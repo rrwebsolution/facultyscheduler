@@ -46,7 +46,7 @@ const Header = ({ isSidebarOpen, setIsSidebarOpen, isSidebarCollapsed, setIsSide
     if (!token) {
         // Kung walay token, limpyohan lang ang frontend
         localStorage.removeItem('user');
-        navigate('/facultyscheduler/user-login');
+        navigate('/user-login');
         return;
     }
 
@@ -65,7 +65,7 @@ const Header = ({ isSidebarOpen, setIsSidebarOpen, isSidebarCollapsed, setIsSide
         localStorage.removeItem('accessToken');
         localStorage.removeItem('user');
         setIsProfileOpen(false);
-        navigate('/facultyscheduler/user-login');
+        navigate('/user-login');
     }
   };
 

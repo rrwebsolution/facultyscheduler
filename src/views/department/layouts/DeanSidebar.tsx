@@ -26,10 +26,10 @@ function DeanSidebar({ isOpen, setIsOpen, isCollapsed }: SidebarProps) {
 
   // FIX: Gi-update ang navLinks para sa Dean
   const navLinks = [
-    { href: "/facultyscheduler/dean/user-dashboard", label: "Dashboard", icon: <Home size={20} /> },
-    { href: "/facultyscheduler/dean/curriculum", label: "Curriculum", icon: <BookOpen size={20} /> },
-    { href: "/facultyscheduler/dean/faculty-loading", label: "Faculty Loading", icon: <Users size={20} /> },
-    { href: "/facultyscheduler/dean/class-schedules", label: "Class Schedules", icon: <Calendar size={20} /> },
+    { href: "/dean/user-dashboard", label: "Dashboard", icon: <Home size={20} /> },
+    { href: "/dean/curriculum", label: "Curriculum", icon: <BookOpen size={20} /> },
+    { href: "/dean/faculty-loading", label: "Faculty Loading", icon: <Users size={20} /> },
+    { href: "/dean/class-schedules", label: "Class Schedules", icon: <Calendar size={20} /> },
   ];
 
   const isRouteActive = (pathname: string, href: string) => {
@@ -49,7 +49,7 @@ function DeanSidebar({ isOpen, setIsOpen, isCollapsed }: SidebarProps) {
     localStorage.removeItem('accessToken');
     localStorage.removeItem('user');
     toast.success("You have been logged out.");
-    navigate('/facultyscheduler/user-login');
+    navigate('/user-login');
   };
 
   useEffect(() => {
@@ -93,7 +93,7 @@ function DeanSidebar({ isOpen, setIsOpen, isCollapsed }: SidebarProps) {
         </button>
         <div className="flex flex-col h-full overflow-hidden">
           <div className="p-4 border-b border-white/10 shrink-0">
-            <Link to="/facultyscheduler/dean/user-dashboard" className="flex items-center gap-3">
+            <Link to="/dean/user-dashboard" className="flex items-center gap-3">
               <div className="w-10 h-10 bg-gradient-to-br from-fuchsia-600 to-violet-600 rounded-lg flex items-center justify-center text-white shadow-lg shrink-0">
                 <BarChart3 size={20} />
               </div>

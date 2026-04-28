@@ -91,11 +91,11 @@ const FacultyContainer = lazy(() =>
 // Route configuration
 const routes = [
   {
-    path: '/facultyscheduler',
+    path: '/',
     element: <RedirectFrom404 />,
   },
   {
-    path: 'facultyscheduler/user-login',
+    path: 'user-login',
     element: (
       <Suspense fallback={<Loader />}>
         <Login />
@@ -103,7 +103,7 @@ const routes = [
     ),
   },
   {
-    path: 'facultyscheduler/forgot-password',
+    path: 'forgot-password',
     element: (
       <Suspense fallback={<Loader />}>
         <ForgotPassword  />
@@ -113,12 +113,12 @@ const routes = [
 
   // Admin
   {
-    path: 'facultyscheduler/admin',
+    path: 'admin',
     element: <AdminContainerLayouts />,
     children: [
       {
         path: '',
-        element: <Navigate to="facultyscheduler/admin/user-dashboard" />,
+        element: <Navigate to="/admin/user-dashboard" />,
       },
       {
         path: 'user-dashboard',
@@ -182,12 +182,12 @@ const routes = [
 
   // Dean Department
   {
-    path: 'facultyscheduler/dean',
+    path: 'dean',
     element: <DeparmentContainerLayouts />,
     children: [
       {
         path: '',
-        element: <Navigate to="facultyscheduler/dean/user-dashboard" />,
+        element: <Navigate to="/dean/user-dashboard" />,
       },
       {
         path: 'user-dashboard',
@@ -223,12 +223,12 @@ const routes = [
 
   // Faculty
   {
-    path: 'facultyscheduler/faculty',
+    path: 'faculty',
     element: <FacultyContainerLayouts />,
     children: [
       {
         path: '',
-        element: <Navigate to="facultyscheduler/faculty/user-dashboard" />,
+        element: <Navigate to="/faculty/user-dashboard" />,
       },
       {
         path: 'user-dashboard',
@@ -281,11 +281,11 @@ function RedirectFrom404() {
   const params = new URLSearchParams(window.location.search);
   const shouldRedirect = params.get('redirect') === 'true';
   if (shouldRedirect) {
-    const saved = sessionStorage.getItem('redirectPath') || '/facultyscheduler/user-login';
+    const saved = sessionStorage.getItem('redirectPath') || '/user-login';
     sessionStorage.removeItem('redirectPath');
     return <Navigate to={saved} replace />;
   }
-  return <Navigate to="/facultyscheduler/user-login" replace />;
+  return <Navigate to="/user-login" replace />;
 }
 
 // Simulate delay function

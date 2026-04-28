@@ -58,7 +58,7 @@ function Curriculum({ readOnly = false }: { readOnly?: boolean }) {
     const fetchPrograms = useCallback(async (showLoading = true) => {
         if(showLoading) setIsLoading(true);
         const token = localStorage.getItem('accessToken');
-        if (!token) { toast.error("Authentication required."); setIsLoading(false); navigate('/facultyscheduler/user-login'); return; }
+        if (!token) { toast.error("Authentication required."); setIsLoading(false); navigate('/user-login'); return; }
         try {
             const response = await axios.get('/program', { headers: { 'Authorization': `Bearer ${token}` } });
             const programList: any[] = Array.isArray(response.data.programs) ? response.data.programs : Object.values(response.data.programs || {});

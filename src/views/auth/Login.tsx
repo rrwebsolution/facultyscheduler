@@ -61,16 +61,16 @@ const Login: React.FC = () => {
             // Role-based redirection
                 switch(data.user.role) {
                     case 0:
-                        navigate('/facultyscheduler/admin/user-dashboard');
+                        navigate('/admin/user-dashboard');
                         break;
                     case 1:
-                        navigate('/facultyscheduler/dean/user-dashboard');
+                        navigate('/dean/user-dashboard');
                         break;
                     case 2:
-                        navigate('/facultyscheduler/faculty/user-dashboard');
+                        navigate('/faculty/user-dashboard');
                         break;
                     default:
-                        navigate('/facultyscheduler/admin/user-dashboard');
+                        navigate('/admin/user-dashboard');
                 }
         } catch (error: unknown) {
             console.error('Login error:', error);

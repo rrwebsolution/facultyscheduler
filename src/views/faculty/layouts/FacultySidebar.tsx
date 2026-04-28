@@ -25,9 +25,9 @@ function FacultySidebar({ isOpen, setIsOpen, isCollapsed }: SidebarProps) {
   }, []);
 
   const navLinks = [
-    { href: "/facultyscheduler/faculty/user-dashboard", label: "Dashboard", icon: <Home size={20} /> },
-    { href: "/facultyscheduler/faculty/faculty-loading", label: "Faculty Loading", icon: <BookOpen size={20} /> },
-    { href: "/facultyscheduler/faculty/my-schedule", label: "My Schedule", icon: <Calendar size={20} /> },
+    { href: "/faculty/user-dashboard", label: "Dashboard", icon: <Home size={20} /> },
+    { href: "/faculty/faculty-loading", label: "Faculty Loading", icon: <BookOpen size={20} /> },
+    { href: "/faculty/my-schedule", label: "My Schedule", icon: <Calendar size={20} /> },
   ];
 
   const isRouteActive = (pathname: string, href: string) => {
@@ -47,7 +47,7 @@ function FacultySidebar({ isOpen, setIsOpen, isCollapsed }: SidebarProps) {
     localStorage.removeItem('accessToken');
     localStorage.removeItem('user');
     toast.success("You have been logged out.");
-    navigate('/facultyscheduler/user-login');
+    navigate('/user-login');
   };
 
   useEffect(() => {
@@ -94,7 +94,7 @@ function FacultySidebar({ isOpen, setIsOpen, isCollapsed }: SidebarProps) {
           {/* FIX: Gipulihan ang profile section og Logo/Title */}
           <div className="p-4 border-b border-white/10 shrink-0">
             <div className="p-4 border-white/10 shrink-0">
-            <Link to="/facultyscheduler/faculty/user-dashboard" className="flex items-center gap-3">
+            <Link to="/faculty/user-dashboard" className="flex items-center gap-3">
               <div className="w-10 h-10 bg-gradient-to-br from-fuchsia-600 to-violet-600 rounded-lg flex items-center justify-center text-xl font-bold text-white shadow-lg shrink-0">FS</div>
               <AnimatePresence>
                 {!hideText && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}><h3 className="font-bold text-lg text-white whitespace-nowrap">Faculty Portal</h3></motion.div>}

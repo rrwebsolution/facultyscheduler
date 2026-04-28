@@ -109,7 +109,7 @@ function FacultyTable() {
     if (!token) {
         toast.error("Authentication required.");
         setIsLoading(false);
-        navigate('/facultyscheduler/user-login');
+        navigate('/user-login');
         return;
     }
     try {
@@ -137,7 +137,7 @@ function FacultyTable() {
         setAllFaculty(allTransformed);
     } catch (error) {
       toast.error("Failed to fetch faculty data.");
-      // navigate('/facultyscheduler/user-login');
+      // navigate('/user-login');
     } finally {
         setIsLoading(false);
     }

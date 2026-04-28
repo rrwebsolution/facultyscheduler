@@ -196,7 +196,7 @@ function DeanDashboardContainer() {
               <h1 className="mt-3 text-3xl md:text-4xl font-bold tracking-tight">Scheduling Overview</h1>
               <p className="text-white/80 max-w-2xl">Manage and oversee all faculty schedules for the department.</p>
             </div>
-            {/* <Link to="/facultyscheduler/dean/conflicts" className="hidden sm:inline-flex items-center gap-2 rounded-md bg-white/10 text-white font-semibold px-4 py-2 hover:bg-white/20 transition">
+            {/* <Link to="/dean/conflicts" className="hidden sm:inline-flex items-center gap-2 rounded-md bg-white/10 text-white font-semibold px-4 py-2 hover:bg-white/20 transition">
               <AlertTriangle size={16} /> Resolve Conflicts
             </Link> */}
           </div>
