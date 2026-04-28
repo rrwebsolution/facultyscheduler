@@ -113,18 +113,18 @@ export function SubjectFormModal(props: SubjectFormProps) {
                     <div className="space-y-4">
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label htmlFor="code">Course Code</Label>
+                                <Label htmlFor="code">Course Code *</Label>
                                 {/* Allow editing the course code even when editing an existing subject */}
-                                <Input id="code" value={subject.code} onChange={e => handleChange('code', e.target.value)} required />
+                                <Input id="code" value={subject.code} onChange={e => handleChange('code', e.target.value)} placeholder="e.g. CS101" required />
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="prerequisite">Pre-requisite</Label>
-                                <Input id="prerequisite" value={subject.prerequisite} onChange={e => handleChange('prerequisite', e.target.value)} placeholder="None" />
+                                <Input id="prerequisite" value={subject.prerequisite} onChange={e => handleChange('prerequisite', e.target.value)} placeholder="e.g. CS100 or None" />
                             </div>
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="name">Descriptive Title</Label>
-                            <Input id="name" value={subject.name} onChange={e => handleChange('name', e.target.value)} required />
+                            <Label htmlFor="name">Descriptive Title *</Label>
+                            <Input id="name" value={subject.name} onChange={e => handleChange('name', e.target.value)} placeholder="e.g. Introduction to Programming" required />
                         </div>
 
                         <div className="space-y-2 pt-2">
@@ -133,10 +133,10 @@ export function SubjectFormModal(props: SubjectFormProps) {
                                 <div className="space-y-1">
                                     <Label htmlFor="unitsTotal">Total</Label>
                                     {/* Gi-disable kay automatic na ang computation */}
-                                    <Input id="unitsTotal" type="number" value={subject.unitsTotal || ''} disabled readOnly />
+                                    <Input id="unitsTotal" type="number" value={subject.unitsTotal || ''} placeholder="Auto-calculated" disabled readOnly />
                                 </div>
-                                <div className="space-y-1"><Label htmlFor="unitsLec">Lec</Label><Input id="unitsLec" type="number" value={subject.unitsLec || ''} onChange={e => handleNumberChange('unitsLec', e.target.value)} /></div>
-                                <div className="space-y-1"><Label htmlFor="unitsLab">Lab</Label><Input id="unitsLab" type="number" value={subject.unitsLab || ''} onChange={e => handleNumberChange('unitsLab', e.target.value)} /></div>
+                                <div className="space-y-1"><Label htmlFor="unitsLec">Lec</Label><Input id="unitsLec" type="number" value={subject.unitsLec || ''} placeholder="0" onChange={e => handleNumberChange('unitsLec', e.target.value)} /></div>
+                                <div className="space-y-1"><Label htmlFor="unitsLab">Lab</Label><Input id="unitsLab" type="number" value={subject.unitsLab || ''} placeholder="0" onChange={e => handleNumberChange('unitsLab', e.target.value)} /></div>
                             </div>
                             {errors?.unitError && <p className="text-destructive text-sm flex items-center gap-2 mt-2"><AlertCircle size={16}/>{errors.unitError}</p>}
                         </div>
@@ -147,10 +147,10 @@ export function SubjectFormModal(props: SubjectFormProps) {
                                 <div className="space-y-1">
                                     <Label htmlFor="hoursTotal">Total</Label>
                                     {/* Gi-disable kay automatic na ang computation */}
-                                    <Input id="hoursTotal" type="number" value={subject.hoursTotal || ''} disabled readOnly />
+                                    <Input id="hoursTotal" type="number" value={subject.hoursTotal || ''} placeholder="Auto-calculated" disabled readOnly />
                                 </div>
-                                <div className="space-y-1"><Label htmlFor="hoursLec">Lec</Label><Input id="hoursLec" type="number" value={subject.hoursLec || ''} onChange={e => handleNumberChange('hoursLec', e.target.value)} /></div>
-                                <div className="space-y-1"><Label htmlFor="hoursLab">Lab</Label><Input id="hoursLab" type="number" value={subject.hoursLab || ''} onChange={e => handleNumberChange('hoursLab', e.target.value)} /></div>
+                                <div className="space-y-1"><Label htmlFor="hoursLec">Lec</Label><Input id="hoursLec" type="number" value={subject.hoursLec || ''} placeholder="0" onChange={e => handleNumberChange('hoursLec', e.target.value)} /></div>
+                                <div className="space-y-1"><Label htmlFor="hoursLab">Lab</Label><Input id="hoursLab" type="number" value={subject.hoursLab || ''} placeholder="0" onChange={e => handleNumberChange('hoursLab', e.target.value)} /></div>
                             </div>
                             {errors?.hourError && <p className="text-destructive text-sm flex items-center gap-2 mt-2"><AlertCircle size={16}/>{errors.hourError}</p>}
                         </div>

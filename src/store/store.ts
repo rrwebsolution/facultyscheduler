@@ -2,6 +2,8 @@ import { configureStore } from "@reduxjs/toolkit";
 import dataCacheReducer, { type CachedFaculty } from "./slices/dataCacheSlice";
 
 const CACHE_STORAGE_KEY = "fs_data_cache_v1";
+const statusFromCache = (value: unknown[] | undefined) =>
+  Array.isArray(value) && value.length > 0 ? ("succeeded" as const) : ("idle" as const);
 
 const loadPreloadedState = () => {
   try {
@@ -21,12 +23,12 @@ const loadPreloadedState = () => {
         subjects: (Array.isArray(parsed.subjects) ? parsed.subjects : []) as any[],
         rooms: (Array.isArray(parsed.rooms) ? parsed.rooms : []) as any[],
         facultyLoading: (Array.isArray(parsed.facultyLoading) ? parsed.facultyLoading : []) as any[],
-        // Always reset to idle so fresh data is fetched on every load.
-        // Cached data above is shown instantly while the request is in-flight.
-        facultiesStatus: "idle" as const,
-        subjectsStatus: "idle" as const,
-        roomsStatus: "idle" as const,
-        facultyLoadingStatus: "idle" as const,
+        // Use cached data without auto-refetch on page reload.
+        // Force refresh should be done via explicit Refresh buttons (force=true).
+        facultiesStatus: statusFromCache(parsed.faculties),
+        subjectsStatus: statusFromCache(parsed.subjects),
+        roomsStatus: statusFromCache(parsed.rooms),
+        facultyLoadingStatus: statusFromCache(parsed.facultyLoading),
         error: null,
       },
     };

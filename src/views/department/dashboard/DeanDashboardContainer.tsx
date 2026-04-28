@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"; // Removed useCallback
 import { motion, AnimatePresence } from "framer-motion";
-import { CalendarCheck } from "lucide-react"; // Removed Loader2
+import { CalendarCheck, RefreshCw } from "lucide-react"; // Removed Loader2
 import { toast } from "sonner";
 import axios from "../../../plugin/axios"; 
 
@@ -56,7 +56,7 @@ const getAuthHeader = () => ({ 'Authorization': `Bearer ${getToken()}` });
 
 
 // --- API CALL IMPLEMENTATIONS ---
-const fetchDashboardData = async (): Promise<{
+const fetchDashboardData = async (forceRefresh = false): Promise<{
     kpiData: ApiKpi[];
     weeklySchedule: ApiWeeklyScheduleResponse;
     facultyLoad: ApiFacultyLoad[];
@@ -69,9 +69,9 @@ const fetchDashboardData = async (): Promise<{
 
     try {
         const [kpiRes, weeklyRes, loadRes] = await Promise.all([
-            axios.get('kpi', config), 
-            axios.get('weekly-schedule', config), 
-            axios.get('faculty-load', config), 
+            axios.get('kpi', { ...config, params: forceRefresh ? { _ts: Date.now() } : undefined }), 
+            axios.get('weekly-schedule', { ...config, params: forceRefresh ? { _ts: Date.now() } : undefined }), 
+            axios.get('faculty-load', { ...config, params: forceRefresh ? { _ts: Date.now() } : undefined }), 
         ]);
 
         return {
@@ -146,27 +146,36 @@ function DeanDashboardContainer() {
   const [selectedDay, setSelectedDay] = useState<DayKey | null>(null);
   const [dashboardData, setDashboardData] = useState<Awaited<ReturnType<typeof fetchDashboardData>> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const loadData = async (forceRefresh = false) => {
+    setIsLoading(true);
+    try {
+      const data = await fetchDashboardData(forceRefresh);
+      setDashboardData(data);
+      if (forceRefresh) toast.success("Dashboard data refreshed.");
+      else toast.success("Dashboard data loaded.");
+    } catch (error: any) {
+      console.error("Dashboard Load Error:", error);
+      toast.error(error.message || "Failed to load dashboard data.");
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  };
 
   const handleDaySelect = (day: DayKey) => {
     setSelectedDay(currentDay => (currentDay === day ? null : day));
   };
 
   useEffect(() => {
-    const loadData = async () => {
-        setIsLoading(true);
-        try {
-            const data = await fetchDashboardData();
-            setDashboardData(data);
-            toast.success("Dashboard data loaded.");
-        } catch (error: any) {
-            console.error("Dashboard Load Error:", error);
-            toast.error(error.message || "Failed to load dashboard data.");
-        } finally {
-            setIsLoading(false);
-        }
-    };
     loadData();
   }, []);
+
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    loadData(true);
+  };
 
 
   if (isLoading || !dashboardData) {
@@ -196,6 +205,17 @@ function DeanDashboardContainer() {
               <h1 className="mt-3 text-3xl md:text-4xl font-bold tracking-tight">Scheduling Overview</h1>
               <p className="text-white/80 max-w-2xl">Manage and oversee all faculty schedules for the department.</p>
             </div>
+            <button
+              type="button"
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className="self-start inline-flex items-center gap-2 px-3 py-2 rounded-md text-white/80 hover:text-white hover:bg-white/10 transition-colors"
+              title="Refresh data"
+              aria-label="Refresh data"
+            >
+              <RefreshCw size={18} className={isRefreshing ? 'animate-spin' : ''} />
+              <span className="text-sm font-medium">Refresh data</span>
+            </button>
             {/* <Link to="/dean/conflicts" className="hidden sm:inline-flex items-center gap-2 rounded-md bg-white/10 text-white font-semibold px-4 py-2 hover:bg-white/20 transition">
               <AlertTriangle size={16} /> Resolve Conflicts
             </Link> */}

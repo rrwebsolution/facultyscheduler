@@ -1,44 +1,49 @@
 import { BookUp, Clock, BookCopy } from "lucide-react";
 import { motion } from "framer-motion";
 
-// FIX 1: Gi-update ang color definitions para mas flexible
-const stats = [
-    { 
-        title: "Today's Classes", 
-        value: "4", 
-        icon: Clock, 
-        colors: { 
-            bg: 'bg-sky-50', 
-            gradient: 'from-sky-100 to-sky-200', 
-            text: 'text-sky-600', 
-            border: 'border-sky-500' 
-        } 
-    },
-    { 
-        title: "Total Subjects", 
-        value: "6", 
-        icon: BookUp, 
-        colors: { 
-            bg: 'bg-amber-50', 
-            gradient: 'from-amber-100 to-amber-200', 
-            text: 'text-amber-600', 
-            border: 'border-amber-500' 
-        } 
-    },
-    { 
-        title: "Total Preparations", 
-        value: "3", 
-        icon: BookCopy, 
-        colors: { 
-            bg: 'bg-rose-50', 
-            gradient: 'from-rose-100 to-rose-200', 
-            text: 'text-rose-600', 
-            border: 'border-rose-500' 
-        } 
-    },
-];
+interface StatsCardsProps {
+  todaysClasses: number;
+  totalSubjects: number;
+  totalPreparations: number;
+}
 
-function StatsCards() {
+function StatsCards({ todaysClasses, totalSubjects, totalPreparations }: StatsCardsProps) {
+  const stats = [
+    {
+      title: "Today's Classes",
+      value: String(todaysClasses),
+      icon: Clock,
+      colors: {
+        bg: 'bg-sky-50',
+        gradient: 'from-sky-100 to-sky-200',
+        text: 'text-sky-600',
+        border: 'border-sky-500'
+      }
+    },
+    {
+      title: "Total Subjects",
+      value: String(totalSubjects),
+      icon: BookUp,
+      colors: {
+        bg: 'bg-amber-50',
+        gradient: 'from-amber-100 to-amber-200',
+        text: 'text-amber-600',
+        border: 'border-amber-500'
+      }
+    },
+    {
+      title: "Total Preparations",
+      value: String(totalPreparations),
+      icon: BookCopy,
+      colors: {
+        bg: 'bg-rose-50',
+        gradient: 'from-rose-100 to-rose-200',
+        text: 'text-rose-600',
+        border: 'border-rose-500'
+      }
+    },
+  ];
+
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
       {stats.map((stat, index) => (

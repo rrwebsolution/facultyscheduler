@@ -105,7 +105,12 @@ function RoomContainer() {
   }, [dispatch]);
 
   // MODIFIED: Added programId to fetchSchedules
-  const fetchSchedules = useCallback(async (year: number | null = null, section: string | null = null, programId: number | null = null): Promise<{ success: boolean; data: ScheduleEntry[]; message?: string }> => {
+  const fetchSchedules = useCallback(async (
+    year: number | null = null,
+    section: string | null = null,
+    programId: number | null = null,
+    forceRefresh = false
+  ): Promise<{ success: boolean; data: ScheduleEntry[]; message?: string }> => {
     const token = localStorage.getItem('accessToken');
     if (!token) {
         return { success: false, data: [], message: "Authentication required." };
@@ -126,6 +131,7 @@ function RoomContainer() {
     if (year) payload.year_level = year;
     if (section) payload.section = section;
     payload.program_id = programId; // <--- include required field
+    if (forceRefresh) payload._ts = Date.now();
 
     try {
         const response = await axios.post('/filter-schedule', payload, { 
@@ -264,7 +270,13 @@ function RoomContainer() {
     try {
       const loadTasks: Promise<any>[] = [fetchRooms(true), fetchSubjects(true), fetchFacultyLoading(true)];
       if (activeTab === "schedules") {
-        loadTasks.push(fetchSchedules());
+        loadTasks.push(
+          fetchSchedules(null, null, null, true).then((result) => {
+            if (result.success) {
+              setSchedules(result.data);
+            }
+          })
+        );
       }
       await Promise.all(loadTasks);
       toast.success("Data refreshed.");
@@ -381,13 +393,14 @@ function RoomContainer() {
             <Button
               type="button"
               variant="outline"
-              size="icon"
               onClick={handleRefresh}
               disabled={isRefreshing}
               title="Refresh data"
               aria-label="Refresh data"
+              className="inline-flex items-center gap-2"
             >
               <RefreshCw size={16} className={isRefreshing ? "animate-spin" : ""} />
+              <span className="text-sm font-medium">Refresh data</span>
             </Button>
             {activeTab === "classrooms" && (
               <Button onClick={handleAddRoom} className="shadow-md hover:shadow-lg transition-all">

@@ -1,7 +1,7 @@
 // src/components/classroom/ClassroomScheduleLayout.tsx
 
 import { useState, useEffect, useCallback } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Loader2, RefreshCw } from 'lucide-react';
 import { toast } from "sonner";
 import axios from "../../../plugin/axios"; // Assuming the same axios instance path as RoomContainer
 import ClassSchedule from '@/views/admin/room/ClassSchedule'; // Assuming this is the correct path for the reusable component
@@ -29,7 +29,7 @@ interface SectionEntry { yearLevel: number; section: string; }
 const getToken = () => localStorage.getItem('accessToken');
 const getAuthHeader = () => ({ 'Authorization': `Bearer ${getToken()}` });
 
-const fetchInitialData = async (): Promise<{
+const fetchInitialData = async (forceRefresh = false): Promise<{
     subjects: Subject[];
     rooms: Room[];
     facultyLoading: FacultyLoadEntry[];
@@ -43,9 +43,9 @@ const fetchInitialData = async (): Promise<{
 
     try {
         const [subjectsRes, roomsRes, loadsRes] = await Promise.all([
-            axios.get<{ subject: any[] }>('/get-subjects', { headers: getAuthHeader() }),
-            axios.get<{ rooms: Room[] }>('/rooms', { headers: getAuthHeader() }),
-            axios.get<{ success: boolean; data: FacultyLoadEntry[] }>('/get-faculty-loading', { headers: getAuthHeader() }),
+            axios.get<{ subject: any[] }>('/get-subjects', { headers: getAuthHeader(), params: forceRefresh ? { _ts: Date.now() } : undefined }),
+            axios.get<{ rooms: Room[] }>('/rooms', { headers: getAuthHeader(), params: forceRefresh ? { _ts: Date.now() } : undefined }),
+            axios.get<{ success: boolean; data: FacultyLoadEntry[] }>('/get-faculty-loading', { headers: getAuthHeader(), params: forceRefresh ? { _ts: Date.now() } : undefined }),
         ]);
 
         // Transform subjects data as done in RoomContainer
@@ -81,7 +81,12 @@ const fetchInitialData = async (): Promise<{
 /**
  * Fetches the schedule entries for a specific year and section (using the filter endpoint).
  */
-const fetchSchedules = async (year: number | null = null, section: string | null = null, programId: number | null = null): Promise<{ success: boolean; data: ScheduleEntry[]; message?: string }> => {
+const fetchSchedules = async (
+    year: number | null = null,
+    section: string | null = null,
+    programId: number | null = null,
+    forceRefresh = false
+): Promise<{ success: boolean; data: ScheduleEntry[]; message?: string }> => {
     const token = getToken();
     if (!token) { 
         return { success: false, data: [], message: "Authentication required." }; 
@@ -101,6 +106,7 @@ const fetchSchedules = async (year: number | null = null, section: string | null
     if (year) payload.year_level = year;
     if (section) payload.section = section;
     payload.program_id = programId;
+    if (forceRefresh) payload._ts = Date.now();
 
     try {
         const response = await axios.post('/filter-schedule', payload, { 
@@ -195,6 +201,7 @@ function ClassroomScheduleLayout() {
   const [facultyLoadingData, setFacultyLoadingData] = useState<FacultyLoadEntry[]>([]);
   const [savedSections, setSavedSections] = useState<SectionEntry[]>([]);
   const [isLoadingInitialData, setIsLoadingInitialData] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Filtered Schedule State (updated by onFilterApply)
   const [scheduleData, setScheduleData] = useState<ScheduleEntry[]>([]);
@@ -228,6 +235,24 @@ function ClassroomScheduleLayout() {
     };
 
     loadData();
+  }, []);
+
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    setIsLoadingInitialData(true);
+    try {
+      const { subjects, rooms, facultyLoading, savedSections: initialSections } = await fetchInitialData(true);
+      setSubjectsData(subjects);
+      setRoomsData(rooms);
+      setFacultyLoadingData(facultyLoading);
+      setSavedSections(initialSections);
+      toast.success("Data refreshed.");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to refresh data.", { duration: 10000 });
+    } finally {
+      setIsRefreshing(false);
+      setIsLoadingInitialData(false);
+    }
   }, []);
 
   // Helper to re-fetch the schedule for the current view
@@ -337,6 +362,17 @@ function ClassroomScheduleLayout() {
                 <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Classroom Schedule</h1>
                 <p className="text-gray-600 mt-1">Manage, create, and view classroom assignments across all departments.</p>
             </div>
+            <button
+                type="button"
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                className="inline-flex items-center gap-2 px-3 py-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                title="Refresh data"
+                aria-label="Refresh data"
+            >
+                <RefreshCw size={18} className={isRefreshing ? 'animate-spin' : ''} />
+                <span className="text-sm font-medium">Refresh data</span>
+            </button>
      
             {/* ClassSchedule Component (The "admin" component being reused) */}
             <ClassSchedule

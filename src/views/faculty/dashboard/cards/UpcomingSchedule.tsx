@@ -3,7 +3,7 @@ import { Clock, DoorClosed } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 // --- TYPE & DATA ---
-interface ScheduleItem {
+export interface ScheduleItem {
     id: number;
     time: string;
     subject: string;
@@ -12,12 +12,9 @@ interface ScheduleItem {
     color: 'sky' | 'emerald' | 'indigo' | 'rose'; // Mas limpyo nga color definition
 }
 
-const initialSchedule: ScheduleItem[] = [
-  { id: 1, time: "08:30 AM - 10:00 AM", subject: "IT-321: Advanced Web Dev", room: "Room 404", program: "BSIT", color: "sky" },
-  { id: 2, time: "10:00 AM - 11:30 AM", subject: "CS-101: Intro to Programming", room: "Room 301", program: "BSCS", color: "emerald" },
-  { id: 3, time: "01:00 PM - 02:30 PM", subject: "IT-412: Project Management", room: "Lab 2", program: "BSIT", color: "indigo" },
-  { id: 4, time: "03:00 PM - 04:30 PM", subject: "DS-202: Data Structures", room: "Room 505", program: "BSCS", color: "rose" },
-];
+interface UpcomingScheduleProps {
+  items: ScheduleItem[];
+}
 
 // FIX 1: I-map ang color names sa saktong Tailwind gradient classes
 const colorMap = {
@@ -27,7 +24,7 @@ const colorMap = {
     rose: 'from-rose-500 to-pink-400',
 }
 
-function UpcomingSchedule() {
+function UpcomingSchedule({ items }: UpcomingScheduleProps) {
   return (
     <Card className="shadow-sm rounded-xl h-full flex flex-col border border-border">
       <CardHeader>
@@ -42,7 +39,7 @@ function UpcomingSchedule() {
       <CardContent className="p-4 md:p-6">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <AnimatePresence>
-            {initialSchedule.map((item, index) => (
+            {items.map((item, index) => (
               <motion.div
                 key={item.id}
                 layout

@@ -33,7 +33,7 @@ function ReportsPage() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
-  const fetchKpis = useCallback(async () => {
+  const fetchKpis = useCallback(async (forceRefresh = false) => {
     try {
       setLoadingKpis(true);
       setKpiError(null);
@@ -44,7 +44,10 @@ function ReportsPage() {
       }
       const response = await axios.get<{ success: boolean; data: KpiData }>(
         'reports/kpis',
-        { headers: { 'Authorization': `Bearer ${accessToken}` } }
+        {
+          headers: { 'Authorization': `Bearer ${accessToken}` },
+          params: forceRefresh ? { _ts: Date.now() } : undefined
+        }
       );
       if (response.data.success) {
         setKpiData(response.data.data);
@@ -64,7 +67,7 @@ function ReportsPage() {
   const handleRefresh = async () => {
     setIsRefreshing(true);
     setRefreshKey(k => k + 1);
-    await fetchKpis();
+    await fetchKpis(true);
     setIsRefreshing(false);
   };
 
@@ -340,11 +343,12 @@ function ReportsPage() {
             type="button"
             onClick={handleRefresh}
             disabled={isRefreshing}
-            className="p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
             title="Refresh data"
             aria-label="Refresh data"
           >
             <RefreshCw size={18} className={isRefreshing ? 'animate-spin' : ''} />
+            <span className="text-sm font-medium">Refresh data</span>
           </button>
           <Button variant="outline" onClick={() => exportPdf()}><FileText className="h-4 w-4 mr-2" /> Export PDF</Button>
         </div>

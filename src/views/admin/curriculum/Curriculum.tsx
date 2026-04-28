@@ -55,12 +55,15 @@ function Curriculum({ readOnly = false }: { readOnly?: boolean }) {
         effectiveYear: string;
     } | null>(null);
 
-    const fetchPrograms = useCallback(async (showLoading = true) => {
+    const fetchPrograms = useCallback(async (showLoading = true, forceRefresh = false) => {
         if(showLoading) setIsLoading(true);
         const token = localStorage.getItem('accessToken');
         if (!token) { toast.error("Authentication required."); setIsLoading(false); navigate('/user-login'); return; }
         try {
-            const response = await axios.get('/program', { headers: { 'Authorization': `Bearer ${token}` } });
+            const response = await axios.get('/program', {
+                headers: { 'Authorization': `Bearer ${token}` },
+                params: forceRefresh ? { _ts: Date.now() } : undefined
+            });
             const programList: any[] = Array.isArray(response.data.programs) ? response.data.programs : Object.values(response.data.programs || {});
             
             // --- FIX IS APPLIED HERE ---
@@ -112,7 +115,8 @@ function Curriculum({ readOnly = false }: { readOnly?: boolean }) {
 
     const handleRefresh = async () => {
         setIsRefreshing(true);
-        await fetchPrograms(true);
+        setRefreshSemestersKey(k => k + 1);
+        await fetchPrograms(true, true);
         setIsRefreshing(false);
     };
 
@@ -268,11 +272,12 @@ function Curriculum({ readOnly = false }: { readOnly?: boolean }) {
                     type="button"
                     onClick={handleRefresh}
                     disabled={isRefreshing}
-                    className="p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                    className="inline-flex items-center gap-2 px-3 py-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                     title="Refresh data"
                     aria-label="Refresh data"
                 >
                     <RefreshCw size={18} className={isRefreshing ? 'animate-spin' : ''} />
+                    <span className="text-sm font-medium">Refresh data</span>
                 </button>
             </header>
             <div className="bg-card p-4 md:p-6 rounded-lg shadow-sm border border-border mb-8">

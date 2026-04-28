@@ -36,12 +36,13 @@ function DashboardContainer() {
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (forceRefresh = false) => {
     try {
       const token = localStorage.getItem('accessToken');
       if (!token) return;
       const response = await axios.get('dashboard/today-statistics', {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
+        params: forceRefresh ? { _ts: Date.now() } : undefined
       });
       if (response.data.success) {
         setData(response.data);
@@ -59,7 +60,7 @@ function DashboardContainer() {
   const handleRefresh = () => {
     setIsRefreshing(true);
     setLoading(true);
-    fetchData();
+    fetchData(true);
   };
 
   return (
@@ -96,11 +97,12 @@ function DashboardContainer() {
             type="button"
             onClick={handleRefresh}
             disabled={isRefreshing}
-            className="self-start md:self-auto p-2 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+            className="self-start md:self-auto inline-flex items-center gap-2 px-3 py-2 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
             title="Refresh data"
             aria-label="Refresh data"
           >
             <RefreshCw size={18} className={isRefreshing ? 'animate-spin' : ''} />
+            <span className="text-sm font-medium">Refresh data</span>
           </button>
         </div>
       </motion.div>

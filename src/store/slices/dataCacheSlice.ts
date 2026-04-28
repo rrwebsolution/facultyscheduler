@@ -47,7 +47,10 @@ const authHeader = () => {
 };
 
 export const fetchFaculties = createAsyncThunk("dataCache/fetchFaculties", async (_force: boolean = false) => {
-  const response = await axios.get("/faculties", { headers: authHeader() });
+  const response = await axios.get("/faculties", {
+    headers: authHeader(),
+    params: _force ? { _ts: Date.now() } : undefined,
+  });
   const mapped = (response.data.faculties || []).map((f: any) => ({
     id: f.id,
     name: f.user?.name || "",
@@ -71,7 +74,10 @@ export const fetchFaculties = createAsyncThunk("dataCache/fetchFaculties", async
 });
 
 export const fetchSubjects = createAsyncThunk("dataCache/fetchSubjects", async (_force: boolean = false) => {
-  const response = await axios.get("/get-subjects", { headers: authHeader() });
+  const response = await axios.get("/get-subjects", {
+    headers: authHeader(),
+    params: _force ? { _ts: Date.now() } : undefined,
+  });
   return response.data.subject || [];
 }, {
   condition: (force, { getState }) => {
@@ -83,7 +89,10 @@ export const fetchSubjects = createAsyncThunk("dataCache/fetchSubjects", async (
 });
 
 export const fetchRooms = createAsyncThunk("dataCache/fetchRooms", async (_force: boolean = false) => {
-  const response = await axios.get("/rooms", { headers: authHeader() });
+  const response = await axios.get("/rooms", {
+    headers: authHeader(),
+    params: _force ? { _ts: Date.now() } : undefined,
+  });
   return response.data.rooms || [];
 }, {
   condition: (force, { getState }) => {
@@ -95,7 +104,10 @@ export const fetchRooms = createAsyncThunk("dataCache/fetchRooms", async (_force
 });
 
 export const fetchFacultyLoading = createAsyncThunk("dataCache/fetchFacultyLoading", async (_force: boolean = false) => {
-  const response = await axios.get("/get-faculty-loading", { headers: authHeader() });
+  const response = await axios.get("/get-faculty-loading", {
+    headers: authHeader(),
+    params: _force ? { _ts: Date.now() } : undefined,
+  });
   return response.data.success ? response.data.data || [] : [];
 }, {
   condition: (force, { getState }) => {

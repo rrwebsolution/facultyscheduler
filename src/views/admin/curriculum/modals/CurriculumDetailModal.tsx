@@ -66,7 +66,10 @@ export function CurriculumDetailModal({
             const token = localStorage.getItem('accessToken');
             if (!token) { toast.error('Authentication required.'); setIsLoading(false); return; }
             try {
-                const response = await axios.get('/semester-with-subjects', { params: { program_id: program.id }, headers: { Authorization: `Bearer ${token}` } });
+                const response = await axios.get('/semester-with-subjects', {
+                    params: { program_id: program.id, _ts: Date.now() },
+                    headers: { Authorization: `Bearer ${token}` }
+                });
                 const apiSemesters: any[] = Array.isArray(response.data.semesters) ? response.data.semesters : [];
                 const programSemesters: { [key: string]: Semester } = {};
                 apiSemesters.forEach(apiSem => {

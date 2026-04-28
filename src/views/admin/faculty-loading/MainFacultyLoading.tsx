@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { Info, Search, RefreshCw } from 'lucide-react';
-import Swal from 'sweetalert2';
 import { Input } from '@/components/ui/input';
 import type { Faculty, Subject } from './type';
+import { toast } from 'sonner';
 import { FacultyCardSkeleton } from './components/card/FacultyCardSkeleton';
 import { AssignSubjectDialog } from './components/AssignSubjectDialog';
 import { ViewAssignedSubjectsDialog } from './components/ViewAssignedSubjectsDialog';
@@ -20,6 +20,7 @@ function MainFacultyLoading() {
     const subjectsStatus = useAppSelector((state) => state.dataCache.subjectsStatus);
     const [subjectsForModal, setSubjectsForModal] = useState<Subject[]>([]);
     const [facultyQuery, setFacultyQuery] = useState('');
+    const [isRefreshing, setIsRefreshing] = useState(false);
     
     // State for Assign Subject Dialog
     const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
@@ -35,7 +36,7 @@ function MainFacultyLoading() {
             try {
                 const token = localStorage.getItem('accessToken');
                 if (!token) {
-                    Swal.fire({ icon: 'warning', title: 'Authentication Error', text: 'You must be logged in.' });
+                    toast.error('You must be logged in.');
                     return;
                 }
                 const tasks: Promise<unknown>[] = [];
@@ -45,13 +46,14 @@ function MainFacultyLoading() {
 
             } catch (error) {
                 console.error("Error fetching data:", error);
-                Swal.fire({ icon: 'error', title: 'Fetch Error', text: 'Failed to retrieve data from the server.' });
+                toast.error('Failed to retrieve data from the server.');
             }
         };
         fetchInitialData();
     }, [dispatch, facultiesStatus, subjectsStatus]);
 
     const isLoading = facultiesStatus === 'loading' || subjectsStatus === 'loading' || (facultiesStatus === 'idle' && subjectsStatus === 'idle');
+    const isBusy = isLoading || isRefreshing;
 
     const filteredFaculties = faculties.filter(f =>
         f.name.toLowerCase().includes(facultyQuery.toLowerCase()) ||
@@ -112,6 +114,22 @@ function MainFacultyLoading() {
         // you can call a refresh function here or trigger a state update.
     };
 
+    const handleRefresh = async () => {
+        setIsRefreshing(true);
+        try {
+            await Promise.all([
+                dispatch(fetchFacultiesAction(true)).unwrap(),
+                dispatch(fetchSubjectsAction(true)).unwrap(),
+            ]);
+            toast.success('Faculty loading data has been updated.');
+        } catch (error) {
+            console.error("Refresh failed:", error);
+            toast.error('Failed to refresh faculty loading data.');
+        } finally {
+            setIsRefreshing(false);
+        }
+    };
+
     return (
         <>
             <AnimatePresence>
@@ -142,16 +160,14 @@ function MainFacultyLoading() {
                 </div>
                 <button
                     type="button"
-                    onClick={() => {
-                        dispatch(fetchFacultiesAction(true));
-                        dispatch(fetchSubjectsAction(true));
-                    }}
-                    disabled={isLoading}
-                    className="p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                    onClick={handleRefresh}
+                    disabled={isBusy}
+                    className="inline-flex items-center gap-2 px-3 py-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                     title="Refresh data"
                     aria-label="Refresh data"
                 >
-                    <RefreshCw size={18} className={isLoading ? 'animate-spin' : ''} />
+                    <RefreshCw size={18} className={isBusy ? 'animate-spin' : ''} />
+                    <span className="text-sm font-medium">Refresh data</span>
                 </button>
             </header>
 

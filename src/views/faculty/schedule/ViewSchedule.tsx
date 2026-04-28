@@ -1,11 +1,13 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { CalendarX2, Clock, Building2, BookOpen, Search } from 'lucide-react'
+import { CalendarX2, Clock, Building2, BookOpen, Search, RefreshCw } from 'lucide-react'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
+import { useAppDispatch, useAppSelector } from '@/store/hooks'
+import { fetchFacultyLoading } from '@/store/slices/dataCacheSlice'
 
 // --- TYPE DEFINITIONS & MOCK DATA ---
 interface ScheduledClass {
@@ -21,15 +23,6 @@ interface ScheduledClass {
   color: 'sky' | 'emerald' | 'indigo' | 'rose' | 'amber' | 'purple' | 'green' | 'orange' | 'slate';
 }
 
-const facultyScheduleData: ScheduledClass[] = [
-  { id: 1, code: 'CS101', name: 'Intro to Programming', room: '101', program: 'BSIT', schedule: { day: 'Monday', time: '08:00 - 09:30' }, color: 'sky' },
-  { id: 2, code: 'IT210', name: 'Web Development 1', room: 'Lab 2', program: 'BSIT', schedule: { day: 'Monday', time: '10:00 - 11:30' }, color: 'indigo' },
-  { id: 3, code: 'CS320', name: 'Software Engineering', room: '303', program: 'BSCS', schedule: { day: 'Monday', time: '13:00 - 14:30' }, color: 'purple' },
-  { id: 6, code: 'CS102', name: 'Data Structures', room: '102', program: 'BSCS', schedule: { day: 'Tuesday', time: '08:00 - 09:30' }, color: 'emerald' },
-  { id: 11, code: 'CS205', name: 'Object-Oriented Prog.', room: '202', program: 'BSCS', schedule: { day: 'Wednesday', time: '08:00 - 09:30' }, color: 'green' },
-  { id: 12, code: 'PE4', name: 'Physical Education 4', room: 'Gym', program: 'General', schedule: { day: 'Saturday', time: '09:00 - 11:00' }, color: 'orange' },
-];
-
 type DayName = ScheduledClass['schedule']['day'];
 const daysOfWeek: DayName[] = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -40,6 +33,19 @@ const getTodayName = (): DayName => {
 
 const parseStartMinutes = (range: string) => { const [start] = range.split('-'); const [hh = 0, mm = 0] = start.split(':').map(Number); return hh * 60 + mm; };
 const sortByStart = (a: ScheduledClass, b: ScheduledClass) => parseStartMinutes(a.schedule.time) - parseStartMinutes(b.schedule.time);
+const formatTime = (time: string) => {
+  const [hh, mm] = (time || '00:00').split(':').map(Number);
+  const suffix = hh >= 12 ? 'PM' : 'AM';
+  const normalized = hh % 12 || 12;
+  return `${String(normalized).padStart(2, '0')}:${String(mm || 0).padStart(2, '0')} ${suffix}`;
+};
+const normalizeDay = (day: string): DayName => {
+  const key = (day || '').slice(0, 3).toLowerCase();
+  const map: Record<string, DayName> = {
+    mon: 'Monday', tue: 'Tuesday', wed: 'Wednesday', thu: 'Thursday', fri: 'Friday', sat: 'Saturday'
+  };
+  return map[key] || 'Monday';
+};
 
 const colorMap: Record<ScheduledClass['color'], { border: string, bg: string, text: string }> = {
     sky: { border: 'border-sky-500', bg: 'bg-sky-500/10', text: 'text-sky-600' },
@@ -54,12 +60,44 @@ const colorMap: Record<ScheduledClass['color'], { border: string, bg: string, te
 };
 
 function ViewSchedule() {
+  const dispatch = useAppDispatch();
+  const facultyLoading = useAppSelector((s) => s.dataCache.facultyLoading) as any[];
+  const loadingStatus = useAppSelector((s) => s.dataCache.facultyLoadingStatus);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const today = getTodayName();
   const [selectedDay, setSelectedDay] = useState<DayName>(today);
   const [search, setSearch] = useState<string>('');
   const [program, setProgram] = useState<string>('All');
 
-  const uniquePrograms = useMemo<string[]>(() => Array.from(new Set(facultyScheduleData.map((c) => c.program))).sort(), []);
+  const userString = localStorage.getItem('user');
+  const user = userString ? JSON.parse(userString) : { id: 0 };
+  const userId = Number(user?.id || 0);
+
+  useEffect(() => {
+    if (loadingStatus === 'idle') {
+      dispatch(fetchFacultyLoading(false));
+    }
+  }, [dispatch, loadingStatus]);
+
+  const facultyScheduleData = useMemo<ScheduledClass[]>(() => {
+    const colors: ScheduledClass['color'][] = ['sky', 'emerald', 'indigo', 'rose', 'amber', 'purple', 'green', 'orange', 'slate'];
+    return facultyLoading
+      .filter((l: any) => Number(l?.faculty?.user_id || l?.faculty?.user?.id || 0) === userId)
+      .map((l: any, i: number) => ({
+        id: l.id,
+        code: l?.subject?.subject_code || 'N/A',
+        name: l?.subject?.des_title || 'Untitled Subject',
+        room: l?.room?.roomNumber || 'TBA',
+        program: l?.program?.abbreviation || l?.program?.program_name || 'Program',
+        schedule: {
+          day: normalizeDay(l?.day || ''),
+          time: `${formatTime(l?.start_time || '')} - ${formatTime(l?.end_time || '')}`,
+        },
+        color: colors[i % colors.length],
+      }));
+  }, [facultyLoading, userId]);
+
+  const uniquePrograms = useMemo<string[]>(() => Array.from(new Set(facultyScheduleData.map((c) => c.program))).sort(), [facultyScheduleData]);
 
   const byDay = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -77,12 +115,30 @@ function ViewSchedule() {
   }, [search, program]);
 
   const classesForSelectedDay = byDay.get(selectedDay) ?? [];
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await dispatch(fetchFacultyLoading(true)).unwrap();
+    setIsRefreshing(false);
+  };
 
   return (
     <div className="space-y-8">
-      <header>
-        <h1 className="text-3xl md:text-4xl font-bold text-foreground tracking-tight">My Weekly Schedule</h1>
-        <p className="text-muted-foreground mt-2">Browse your weekly teaching schedule and filter by program or subject.</p>
+      <header className="flex items-center justify-between gap-3">
+        <div>
+          <h1 className="text-3xl md:text-4xl font-bold text-foreground tracking-tight">My Weekly Schedule</h1>
+          <p className="text-muted-foreground mt-2">Browse your weekly teaching schedule and filter by program or subject.</p>
+        </div>
+        <button
+          type="button"
+          onClick={handleRefresh}
+          disabled={isRefreshing}
+          className="inline-flex items-center gap-2 px-3 py-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+          title="Refresh data"
+          aria-label="Refresh data"
+        >
+          <RefreshCw size={18} className={isRefreshing ? 'animate-spin' : ''} />
+          <span className="text-sm font-medium">Refresh data</span>
+        </button>
       </header>
 
       <div className="bg-card p-4 rounded-lg shadow-sm border border-border">

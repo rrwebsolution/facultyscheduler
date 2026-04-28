@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { User, LogOut, Settings, Calendar, Clock, Menu, X, PanelLeftClose, PanelLeftOpen, Sun, Moon, Laptop, ChevronDown, RefreshCw } from 'lucide-react';
+import { User, LogOut, Settings, Calendar, Clock, Menu, X, PanelLeftClose, PanelLeftOpen, Sun, Moon, Laptop, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Variants } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
@@ -17,7 +17,6 @@ interface HeaderProps {
 const FacultyHeader = ({ isSidebarOpen, setIsSidebarOpen, isSidebarCollapsed, setIsSidebarCollapsed }: HeaderProps) => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isThemeOpen, setIsThemeOpen] = useState(false);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [now, setNow] = useState(() => new Date());
 
   const { theme, setTheme } = useTheme();
@@ -58,19 +57,6 @@ const FacultyHeader = ({ isSidebarOpen, setIsSidebarOpen, isSidebarCollapsed, se
     setIsProfileOpen(false);
   };
 
-  const handleRefresh = () => {
-    setIsRefreshing(true);
-    const keysToRemove: string[] = [];
-    for (let i = 0; i < localStorage.length; i += 1) {
-      const key = localStorage.key(i);
-      if (key && (key.startsWith('fs_http_cache_v') || key === 'fs_data_cache_v1')) {
-        keysToRemove.push(key);
-      }
-    }
-    keysToRemove.forEach((key) => localStorage.removeItem(key));
-    window.location.reload();
-  };
-  
   const dropdownVariants: Variants = {
     hidden: { opacity: 0, y: -10, scale: 0.95 },
     visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.2, ease: "easeOut" as const } },
@@ -113,16 +99,6 @@ const FacultyHeader = ({ isSidebarOpen, setIsSidebarOpen, isSidebarCollapsed, se
             </AnimatePresence>
           </div>
 
-          <button
-            onClick={handleRefresh}
-            disabled={isRefreshing}
-            className="p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            aria-label="Refresh page data"
-            title="Refresh page data"
-          >
-            <RefreshCw size={18} className={isRefreshing ? 'animate-spin' : ''} />
-          </button>
-          
           <span className="h-6 w-px bg-border hidden sm:inline-block"></span>
 
           <div className="relative" ref={profileDropdownRef}>

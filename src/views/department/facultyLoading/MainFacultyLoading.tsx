@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { AnimatePresence } from 'framer-motion';
-import { Info, Search } from 'lucide-react';
-import Swal from 'sweetalert2';
+import { Info, Search, RefreshCw } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { fetchFaculties as fetchFacultiesAction, fetchSubjects as fetchSubjectsAction } from '@/store/slices/dataCacheSlice';
+import { toast } from 'sonner';
 
 import { FacultyCard } from './components/card/FacultyCard';
 import { AssignSubjectDialog } from './components/AssignSubjectDialog';
@@ -21,6 +21,7 @@ function MainFacultyLoading() {
     const subjectsStatus = useAppSelector((state) => state.dataCache.subjectsStatus);
     const [subjectsForModal, setSubjectsForModal] = useState<Subject[]>([]);
     const [facultyQuery, setFacultyQuery] = useState('');
+    const [isRefreshing, setIsRefreshing] = useState(false);
     
     // State for Assign Subject Dialog
     const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
@@ -36,7 +37,7 @@ function MainFacultyLoading() {
             try {
                 const token = localStorage.getItem('accessToken');
                 if (!token) {
-                    Swal.fire({ icon: 'warning', title: 'Authentication Error', text: 'You must be logged in.' });
+                    toast.error('You must be logged in.');
                     return;
                 }
                 const tasks: Promise<unknown>[] = [];
@@ -46,13 +47,14 @@ function MainFacultyLoading() {
 
             } catch (error) {
                 console.error("Error fetching data:", error);
-                Swal.fire({ icon: 'error', title: 'Fetch Error', text: 'Failed to retrieve data from the server.' });
+                toast.error('Failed to retrieve data from the server.');
             }
         };
         fetchInitialData();
     }, [dispatch, facultiesStatus, subjectsStatus]);
 
     const isLoading = facultiesStatus === 'loading' || subjectsStatus === 'loading' || (facultiesStatus === 'idle' && subjectsStatus === 'idle');
+    const isBusy = isLoading || isRefreshing;
 
     const filteredFaculties = faculties.filter(f =>
         f.name.toLowerCase().includes(facultyQuery.toLowerCase()) ||
@@ -113,6 +115,22 @@ function MainFacultyLoading() {
         // you can call a refresh function here or trigger a state update.
     };
 
+    const handleRefresh = async () => {
+        setIsRefreshing(true);
+        try {
+            await Promise.all([
+                dispatch(fetchFacultiesAction(true)).unwrap(),
+                dispatch(fetchSubjectsAction(true)).unwrap(),
+            ]);
+            toast.success('Faculty loading data has been updated.');
+        } catch (error) {
+            console.error("Refresh failed:", error);
+            toast.error('Failed to refresh faculty loading data.');
+        } finally {
+            setIsRefreshing(false);
+        }
+    };
+
     return (
         <>
             <AnimatePresence>
@@ -135,10 +153,25 @@ function MainFacultyLoading() {
             </AnimatePresence>
             
             <header className="mb-8 text-start">
-                <h1 className="text-3xl md:text-4xl font-bold text-foreground tracking-tight">Faculty Loading</h1>
-                <p className="text-muted-foreground mt-3 ">
-                    Assign subjects to faculty based on expertise and availability.
-                </p>
+                <div className="flex justify-between items-center">
+                    <div>
+                        <h1 className="text-3xl md:text-4xl font-bold text-foreground tracking-tight">Faculty Loading</h1>
+                        <p className="text-muted-foreground mt-3 ">
+                            Assign subjects to faculty based on expertise and availability.
+                        </p>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={handleRefresh}
+                        disabled={isBusy}
+                        className="inline-flex items-center gap-2 px-3 py-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                        title="Refresh data"
+                        aria-label="Refresh data"
+                    >
+                        <RefreshCw size={18} className={isBusy ? 'animate-spin' : ''} />
+                        <span className="text-sm font-medium">Refresh data</span>
+                    </button>
+                </div>
             </header>
 
             <div className="bg-card p-4 md:p-6 rounded-xl shadow-sm border border-border">

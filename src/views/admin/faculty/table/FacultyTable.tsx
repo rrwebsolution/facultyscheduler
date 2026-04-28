@@ -103,7 +103,7 @@ function FacultyTable() {
   const [highlightedFacultyId, setHighlightedFacultyId] = useState<number | null>(null);
   const navigate = useNavigate();
 
-  const fetchFaculty = useCallback(async () => {
+  const fetchFaculty = useCallback(async (forceRefresh = false) => {
     setIsLoading(true);
     const token = localStorage.getItem('accessToken');
     if (!token) {
@@ -114,7 +114,10 @@ function FacultyTable() {
     }
     try {
         // Fetch only the 'active' faculty list
-        const response = await axios.get('/faculties', { headers: { 'Authorization': `Bearer ${token}` } });
+        const response = await axios.get('/faculties', {
+          headers: { 'Authorization': `Bearer ${token}` },
+          params: forceRefresh ? { _ts: Date.now() } : undefined
+        });
         
         const activeList: any[] = response.data.faculties || [];
         // const inactiveList: any[] = response.data.inactive_faculties || []; // Commented out: No longer needed for archive
@@ -307,13 +310,14 @@ function FacultyTable() {
         </div>
         <button
           type="button"
-          onClick={() => fetchFaculty()}
+          onClick={() => fetchFaculty(true)}
           disabled={isLoading}
-          className="p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+          className="inline-flex items-center gap-2 px-3 py-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
           title="Refresh data"
           aria-label="Refresh data"
         >
           <RefreshCw size={18} className={isLoading ? 'animate-spin' : ''} />
+          <span className="text-sm font-medium">Refresh data</span>
         </button>
       </header>
 
