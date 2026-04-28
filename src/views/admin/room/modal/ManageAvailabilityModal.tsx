@@ -38,7 +38,7 @@ export function ManageAvailabilityModal({ isOpen, onClose, room }: Props) {
   const [isProcessing, setIsProcessing] = useState(false);
 
   // Ang input sa form magpabilin nga 24-hour format (mas sayon i-handle)
-  const defaultNewSlot = { day: "Monday", start_time: "07:00", end_time: "12:00" };
+  const defaultNewSlot = { day: "", start_time: "00:00", end_time: "00:00" };
   const [newSlotData, setNewSlotData] = useState(defaultNewSlot);
 
   useEffect(() => {
@@ -74,6 +74,10 @@ export function ManageAvailabilityModal({ isOpen, onClose, room }: Props) {
   const handleAddNewSlot = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!room) return;
+    if (!newSlotData.day) {
+        toast.error("Please select a day.");
+        return;
+    }
     if (newSlotData.start_time >= newSlotData.end_time) {
         toast.error("End time must be after start time.");
         return;
@@ -186,7 +190,7 @@ export function ManageAvailabilityModal({ isOpen, onClose, room }: Props) {
                     <div className="space-y-1">
                         <Label htmlFor="day">Day</Label>
                         <Select value={newSlotData.day} onValueChange={(value) => handleInputChange('day', value)}>
-                            <SelectTrigger id="day"><SelectValue /></SelectTrigger>
+                            <SelectTrigger id="day"><SelectValue placeholder="Select day" /></SelectTrigger>
                             <SelectContent>
                                 {daysOfWeek.map(day => <SelectItem key={day} value={day}>{day}</SelectItem>)}
                             </SelectContent>
