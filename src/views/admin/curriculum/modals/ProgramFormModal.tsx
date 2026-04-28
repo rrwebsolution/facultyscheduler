@@ -7,6 +7,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import type { Program } from '../types';
 import { toast } from 'sonner';
 import axios from '../../../../plugin/axios';
+import { isAxiosError } from 'axios';
 
 type ProgramFormProps = { isOpen: boolean; onClose: () => void; onSave: (program: Program) => void; initialData: Program | null; };
 
@@ -85,7 +86,7 @@ export function ProgramFormModal({ isOpen, onClose, onSave, initialData }: Progr
         } catch (error) {
             
             // FIX: I-check kung ang error kay AxiosError sa dili pa i-access ang .response
-            if (axios.isAxiosError(error) && error.response) {
+            if (isAxiosError(error) && error.response) {
                 if (error.response.status === 401) {
                     toast.error("Your session has expired. Please log in again.");
                     return;

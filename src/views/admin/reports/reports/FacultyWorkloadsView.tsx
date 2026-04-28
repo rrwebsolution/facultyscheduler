@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { User, BarChartHorizontal, Loader2 } from "lucide-react"; 
-import axios from "../../../../plugin/axios"; 
+import axios from "../../../../plugin/axios";
+import { isAxiosError } from 'axios';
 
 // 1. Local types for API response (faculty-loading rows)
 interface ApiLoadingRow {
@@ -139,8 +140,8 @@ export function FacultyWorkloadsView() {
 
         setFacultyWorkloads(workloads);
       } catch (err) {
-        const errorMessage = axios.isAxiosError(err) && err.response?.data?.message
-            ? err.response.data.message 
+        const errorMessage = isAxiosError(err) && err.response?.data?.message
+            ? err.response.data.message
             : "Could not connect to the server or fetch data.";
 
         console.error("Error fetching faculty workload data:", err);

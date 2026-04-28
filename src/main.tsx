@@ -1,6 +1,6 @@
 import ReactDOM from 'react-dom/client';
 import { Navigate, RouterProvider, createBrowserRouter } from 'react-router-dom';
-import React, { Suspense, lazy } from 'react';
+import { Suspense, lazy } from 'react';
 import { Provider } from 'react-redux';
 import NotFound from './notFound';
 import './index.css';

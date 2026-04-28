@@ -32,7 +32,6 @@ const clearApiCache = () => {
 
 const baseGet = api.get.bind(api);
 api.get = ((url: string, config?: AxiosRequestConfig) => {
-  const normalizedUrl = normalizeUrl(url);
   const method = (config?.method || 'get').toLowerCase();
   const skipCacheHeader = Boolean((config?.headers as Record<string, unknown> | undefined)?.['x-skip-cache']);
   const isCacheable = method === 'get' && !skipCacheHeader;

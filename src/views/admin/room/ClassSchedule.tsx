@@ -13,7 +13,8 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import type { FacultyLoadEntry, Room, ScheduleEntry, SectionEntry, Subject } from './classroom'; 
-import axios from '../../../plugin/axios'; 
+import axios from '../../../plugin/axios';
+import { isAxiosError } from 'axios';
 
 
 // --- INTERFACE DEFINITIONS ---
@@ -194,7 +195,7 @@ const ClassSchedule: React.FC<Props> = ({
                 setProgramsData(response.data.programs); 
             } catch (error: any) {
                 console.error("Failed to fetch programs:", error);
-                const errorMessage = axios.isAxiosError(error) 
+                const errorMessage = isAxiosError(error)
                     ? error.response?.data?.message || error.message
                     : "An unknown error occurred.";
                 toast.error(`Failed to load program list: ${errorMessage}`);

@@ -1,5 +1,5 @@
 import { configureStore } from "@reduxjs/toolkit";
-import dataCacheReducer from "./slices/dataCacheSlice";
+import dataCacheReducer, { type CachedFaculty } from "./slices/dataCacheSlice";
 
 const CACHE_STORAGE_KEY = "fs_data_cache_v1";
 
@@ -13,32 +13,20 @@ const loadPreloadedState = () => {
       subjects?: unknown[];
       rooms?: unknown[];
       facultyLoading?: unknown[];
-      facultiesStatus?: "idle" | "loading" | "succeeded" | "failed";
-      subjectsStatus?: "idle" | "loading" | "succeeded" | "failed";
-      roomsStatus?: "idle" | "loading" | "succeeded" | "failed";
-      facultyLoadingStatus?: "idle" | "loading" | "succeeded" | "failed";
     };
-
-    const faculties = Array.isArray(parsed.faculties) ? parsed.faculties : [];
-    const subjects = Array.isArray(parsed.subjects) ? parsed.subjects : [];
-    const rooms = Array.isArray(parsed.rooms) ? parsed.rooms : [];
-    const facultyLoading = Array.isArray(parsed.facultyLoading) ? parsed.facultyLoading : [];
-
-    const facultiesStatus = parsed.facultiesStatus || "idle";
-    const subjectsStatus = parsed.subjectsStatus || "idle";
-    const roomsStatus = parsed.roomsStatus || "idle";
-    const facultyLoadingStatus = parsed.facultyLoadingStatus || "idle";
 
     return {
       dataCache: {
-        faculties,
-        subjects,
-        rooms,
-        facultyLoading,
-        facultiesStatus,
-        subjectsStatus,
-        roomsStatus,
-        facultyLoadingStatus,
+        faculties: (Array.isArray(parsed.faculties) ? parsed.faculties : []) as CachedFaculty[],
+        subjects: (Array.isArray(parsed.subjects) ? parsed.subjects : []) as any[],
+        rooms: (Array.isArray(parsed.rooms) ? parsed.rooms : []) as any[],
+        facultyLoading: (Array.isArray(parsed.facultyLoading) ? parsed.facultyLoading : []) as any[],
+        // Always reset to idle so fresh data is fetched on every load.
+        // Cached data above is shown instantly while the request is in-flight.
+        facultiesStatus: "idle" as const,
+        subjectsStatus: "idle" as const,
+        roomsStatus: "idle" as const,
+        facultyLoadingStatus: "idle" as const,
         error: null,
       },
     };
@@ -57,15 +45,12 @@ export const store = configureStore({
 store.subscribe(() => {
   try {
     const state = store.getState();
+    // Only persist the data arrays, not statuses.
     const cacheOnly = {
       faculties: state.dataCache.faculties,
       subjects: state.dataCache.subjects,
       rooms: state.dataCache.rooms,
       facultyLoading: state.dataCache.facultyLoading,
-      facultiesStatus: state.dataCache.facultiesStatus,
-      subjectsStatus: state.dataCache.subjectsStatus,
-      roomsStatus: state.dataCache.roomsStatus,
-      facultyLoadingStatus: state.dataCache.facultyLoadingStatus,
     };
     localStorage.setItem(CACHE_STORAGE_KEY, JSON.stringify(cacheOnly));
   } catch {

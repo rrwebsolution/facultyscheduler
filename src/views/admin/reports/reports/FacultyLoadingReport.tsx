@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useEffect } from "react";
 // Assuming you have set up the alias for axios
-import axios from '../../../../plugin/axios'; 
+import axios from '../../../../plugin/axios';
+import { isAxiosError } from 'axios';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Filter, Loader2 } from "lucide-react"; 
@@ -277,7 +278,7 @@ export function FacultyLoadingReport() {
       } catch (error) {
         console.error("Error fetching data with axios:", error);
         setIsError(true);
-        if (axios.isAxiosError(error) && error.response) {
+        if (isAxiosError(error) && error.response) {
             setErrorMessage(`API Error: ${error.response.statusText} (${error.response.status}). Is the token valid?`);
         } else {
             setErrorMessage("Network error or failed to connect to the API.");
