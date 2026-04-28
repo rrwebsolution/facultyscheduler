@@ -1,9 +1,9 @@
 import './loader.css'
 
   
-  const Loader = () => {
-    return (
-      <div className="absolute inset-0 flex items-center justify-center z-50">
+const Loader = () => {
+  return (
+      <div className="w-full min-h-[60vh] flex items-center justify-center">
       <div className="flex flex-col items-center gap-4">
         {/* Ang loader animation */}
         <div 

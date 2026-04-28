@@ -114,7 +114,7 @@ const Header = ({ isSidebarOpen, setIsSidebarOpen, isSidebarCollapsed, setIsSide
               )}
             </AnimatePresence>
           </div>
-          
+
           <span className="h-6 w-px bg-border hidden sm:inline-block"></span>
 
           <div className="relative" ref={profileDropdownRef}>

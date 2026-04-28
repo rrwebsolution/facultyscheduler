@@ -24,10 +24,9 @@ import {
   ChevronLeft,
   ChevronRight,
   Briefcase,
-  CalendarDays, // Para sa View Availability (ScheduleModal)
-  List,         // Para sa View Assigned Subjects (ViewAssignedSubjectsDialog)
-  // Filter, // Commented out: Status Filter is removed
-  // RotateCcw, // Commented out: Activate button is removed
+  CalendarDays,
+  List,
+  RefreshCw,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { AddFacultyButton } from "../modal/AddFacultyButton";
@@ -301,9 +300,21 @@ function FacultyTable() {
 
   return (
     <>
-      <header className="mb-6 md:mb-8">
-        <h1 className="text-3xl md:text-4xl font-bold text-foreground tracking-tight">Faculty Management</h1>
-        <p className="text-muted-foreground mt-2">A centralized hub to add, edit, and manage all faculty members.</p>
+      <header className="mb-6 md:mb-8 flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl md:text-4xl font-bold text-foreground tracking-tight">Faculty Management</h1>
+          <p className="text-muted-foreground mt-2">A centralized hub to add, edit, and manage all faculty members.</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => fetchFaculty()}
+          disabled={isLoading}
+          className="p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+          title="Refresh data"
+          aria-label="Refresh data"
+        >
+          <RefreshCw size={18} className={isLoading ? 'animate-spin' : ''} />
+        </button>
       </header>
 
       <div className="bg-card p-4 md:p-6 rounded-lg shadow-sm border border-border">

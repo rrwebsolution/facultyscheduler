@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Cards from "./cards/Cards";
 import { UpcomingSchedules } from "./cards/UpcomingSchedules";
 import { motion } from "framer-motion";
-import { CalendarCheck } from "lucide-react";
+import { CalendarCheck, RefreshCw } from "lucide-react";
 import axios from "../../../plugin/axios";
 
 export interface DashboardData {
@@ -34,67 +34,83 @@ export interface ScheduleDetail {
 function DashboardContainer() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const token = localStorage.getItem('accessToken');
-        if (!token) return;
-
-        const response = await axios.get('dashboard/today-statistics', {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-
-        if (response.data.success) {
-          setData(response.data);
-        }
-      } catch (error) {
-        console.error("Error fetching dashboard data:", error);
-      } finally {
-        setLoading(false);
+  const fetchData = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('accessToken');
+      if (!token) return;
+      const response = await axios.get('dashboard/today-statistics', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (response.data.success) {
+        setData(response.data);
       }
-    };
-
-    fetchData();
+    } catch (error) {
+      console.error("Error fetching dashboard data:", error);
+    } finally {
+      setLoading(false);
+      setIsRefreshing(false);
+    }
   }, []);
 
-  // REMOVED THE FULL PAGE LOADER HERE so the Welcome section shows immediately
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    setLoading(true);
+    fetchData();
+  };
 
   return (
     <>
-      {/* Hero / Welcome Section - ALWAYS VISIBLE */}
+      {/* Hero / Welcome Section - Minimalist & Clean */}
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: "easeOut" }}
-        className="relative overflow-hidden rounded-xl bg-gradient-to-r from-violet-600 via-purple-600 to-fuchsia-600 text-white shadow-lg mb-8"
+        transition={{ duration: 0.4, ease: "easeOut" }}
+        className="relative overflow-hidden rounded-2xl bg-white border border-slate-200 shadow-sm mb-8"
       >
-        <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10 opacity-50 blur-2xl" />
-        <div className="absolute -left-10 -bottom-10 h-40 w-40 rounded-full bg-white/10 opacity-50 blur-2xl" />
+        <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-slate-50 opacity-80 blur-2xl pointer-events-none" />
 
-        <div className="relative p-6 md:p-8">
-          <div className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold">
-            <CalendarCheck size={14} />
-            Admin Dashboard
+        <div className="relative p-6 md:p-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <div className="inline-flex items-center gap-1.5 rounded-md bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600 border border-slate-200 mb-3">
+              <CalendarCheck size={14} className="text-slate-500" />
+              Admin Dashboard
+            </div>
+
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-900">
+              Welcome back, Admin
+            </h1>
+
+            <p className="text-slate-500 max-w-2xl mt-1.5 text-sm md:text-base">
+              {loading
+                ? "Loading schedule data..."
+                : `Here's a snapshot of today's schedule (${data?.day || ''}, ${data?.date || ''}).`
+              }
+            </p>
           </div>
-          <h1 className="mt-3 text-3xl md:text-4xl font-bold tracking-tight">
-            Welcome Back, Admin!
-          </h1>
-          <p className="text-white/80 max-w-2xl mt-2">
-             {loading 
-                ? "Loading schedule data..." 
-                : `Here's a snapshot of today's schedule (${data?.day}, ${data?.date}).`
-             }
-          </p>
+
+          <button
+            type="button"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="self-start md:self-auto p-2 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+            title="Refresh data"
+            aria-label="Refresh data"
+          >
+            <RefreshCw size={18} className={isRefreshing ? 'animate-spin' : ''} />
+          </button>
         </div>
       </motion.div>
 
-      {/* Cards Section - Pass 'isLoading' prop */}
+      {/* Cards Section */}
       <div className="mb-8">
         <Cards counts={data?.counts} isLoading={loading} />
       </div>
 
-      {/* Upcoming Schedules Section - Pass 'isLoading' prop */}
+      {/* Upcoming Schedules Section */}
       <div>
         <UpcomingSchedules schedules={data?.details || []} isLoading={loading} />
       </div>

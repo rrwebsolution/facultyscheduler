@@ -1,12 +1,18 @@
 // src/components/classroom/RoomContainer.tsx
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { toast } from "sonner";
 import axios from "../../../plugin/axios"; // Adjust path as necessary
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import {
+  fetchFacultyLoading as fetchFacultyLoadingAction,
+  fetchRooms as fetchRoomsAction,
+  fetchSubjects as fetchSubjectsAction,
+} from "@/store/slices/dataCacheSlice";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, RefreshCw } from "lucide-react";
 
 // Importing UI and Component Dependencies
 import RoomTable from "./table/RoomTable";
@@ -21,11 +27,15 @@ import type { FacultyLoadEntry, Room, RoomFormData, ScheduleEntry, SectionEntry,
 
 // --- MAIN COMPONENT ---
 function RoomContainer() {
+  const dispatch = useAppDispatch();
+  const cachedRooms = useAppSelector((state) => state.dataCache.rooms);
+  const cachedSubjects = useAppSelector((state) => state.dataCache.subjects);
+  const cachedFacultyLoading = useAppSelector((state) => state.dataCache.facultyLoading);
+  const roomsStatus = useAppSelector((state) => state.dataCache.roomsStatus);
+  const subjectsStatus = useAppSelector((state) => state.dataCache.subjectsStatus);
+  const facultyLoadingStatus = useAppSelector((state) => state.dataCache.facultyLoadingStatus);
+
   // --- DATA STATES ---
-  const [rooms, setRooms] = useState<Room[]>([]);
-  const [subjects, setSubjects] = useState<Subject[]>([]); 
-  const [facultyLoading, setFacultyLoading] = useState<FacultyLoadEntry[]>([]); 
-  
   const [schedules, setSchedules] = useState<ScheduleEntry[]>([]); 
 
   const [savedSections, setSavedSections] = useState<SectionEntry[]>(() => {
@@ -44,65 +54,55 @@ function RoomContainer() {
 
   const [isAvailabilityModalOpen, setIsAvailabilityModalOpen] = useState(false);
   const [selectedRoomForAvailability, setSelectedRoomForAvailability] = useState<Room | null>(null);
+  const [activeTab, setActiveTab] = useState<"classrooms" | "schedules">("classrooms");
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const subjects = useMemo(() => {
+    return (cachedSubjects || []).map((s: any) => ({
+      id: s.id,
+      subject_code: s.subject_code,
+      des_title: s.des_title,
+      code: s.subject_code,
+      name: s.des_title,
+      yearLevel: parseInt(s?.semester?.year_level) || 0,
+      semester_id: s.semester_id,
+      total_units: s.total_units,
+      lec_units: s.lec_units,
+      lab_units: s.lab_units,
+    })) as Subject[];
+  }, [cachedSubjects]);
 
   // --- API CALLS (Logic remains the same) ---
-  const fetchRooms = useCallback(async () => {
+  const fetchRooms = useCallback(async (force = false) => {
     try {
-      const token = localStorage.getItem('accessToken');
-      if (!token) { toast.error("Authentication required."); return false; }
-      const response = await axios.get('/rooms', { headers: { 'Authorization': `Bearer ${token}` } });
-      setRooms(response.data.rooms || []);
+      await dispatch(fetchRoomsAction(force)).unwrap();
       return true;
     } catch (error) {
       toast.error("Failed to fetch rooms.");
       console.error("Fetch Rooms Error:", error);
       return false;
     }
-  }, []);
+  }, [dispatch]);
 
-  const fetchSubjects = useCallback(async () => {
+  const fetchSubjects = useCallback(async (force = false) => {
     try {
-      const token = localStorage.getItem('accessToken');
-      if (!token) { toast.error("Authentication required."); return false; }
-      const response = await axios.get('/get-subjects', { headers: { 'Authorization': `Bearer ${token}` } });
-      const apiSubjects = response.data.subject || [];
-      const transformedSubjects: Subject[] = apiSubjects.map((s: any) => ({
-        id: s.id,
-        subject_code: s.subject_code,
-        des_title: s.des_title,
-        code: s.subject_code, 
-        name: s.des_title, 
-        yearLevel: parseInt(s.semester.year_level) || 0,
-        semester_id: s.semester_id,
-        total_units: s.total_units,
-        lec_units: s.lec_units,
-        lab_units: s.lab_units,
-      }));
-      setSubjects(transformedSubjects);
+      await dispatch(fetchSubjectsAction(force)).unwrap();
       return true;
     } catch (error) {
       toast.error("Failed to fetch subjects.");
       console.error("Fetch Subjects Error:", error);
       return false;
     }
-  }, []);
+  }, [dispatch]);
 
-  const fetchFacultyLoading = useCallback(async () => {
+  const fetchFacultyLoading = useCallback(async (force = false) => {
     try {
-      const token = localStorage.getItem('accessToken');
-      if (!token) { return false; } 
-      const response = await axios.get('get-faculty-loading', { headers: { 'Authorization': `Bearer ${token}` } });
-      
-      if (response.data.success) {
-        setFacultyLoading(response.data.data || []);
-        return true;
-      }
-      return false;
+      await dispatch(fetchFacultyLoadingAction(force)).unwrap();
+      return true;
     } catch (error) {
       console.error("Fetch Faculty Loading Error:", error);
       return false;
     }
-  }, []);
+  }, [dispatch]);
 
   // MODIFIED: Added programId to fetchSchedules
   const fetchSchedules = useCallback(async (year: number | null = null, section: string | null = null, programId: number | null = null): Promise<{ success: boolean; data: ScheduleEntry[]; message?: string }> => {
@@ -172,12 +172,13 @@ function RoomContainer() {
     const loadData = async () => {
       setIsLoading(true);
       try {
-        const [_, __, ___, scheduleResult] = await Promise.all([
-            fetchRooms(), 
-            fetchSubjects(), 
-            fetchFacultyLoading(),
-            fetchSchedules() // Initial load runs without specific filters
-        ]);
+        const loadTasks: Promise<any>[] = [fetchSchedules()];
+        if (roomsStatus === "idle") loadTasks.push(fetchRooms());
+        if (subjectsStatus === "idle") loadTasks.push(fetchSubjects());
+        if (facultyLoadingStatus === "idle") loadTasks.push(fetchFacultyLoading());
+
+        const results = await Promise.all(loadTasks);
+        const scheduleResult = results[0];
         
         if (scheduleResult.success) {
              setSchedules(scheduleResult.data);
@@ -192,7 +193,7 @@ function RoomContainer() {
       }
     }
     loadData();
-  }, [fetchRooms, fetchSubjects, fetchFacultyLoading, fetchSchedules]);
+  }, [fetchRooms, fetchSubjects, fetchFacultyLoading, fetchSchedules, roomsStatus, subjectsStatus, facultyLoadingStatus]);
 
 
   // --- ROOM CRUD HANDLERS (Logic remains the same) ---
@@ -256,6 +257,25 @@ function RoomContainer() {
   const handleEditRoom = (room: Room) => { setEditingRoom(room); setIsModalOpen(true); };
   const openDeleteConfirm = (roomId: number) => { setConfirmDialog({ open: true, roomId: roomId }); };
   const handleManageAvailability = (room: Room) => { setSelectedRoomForAvailability(room); setIsAvailabilityModalOpen(true); };
+  
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    setIsLoading(true);
+    try {
+      const loadTasks: Promise<any>[] = [fetchRooms(true), fetchSubjects(true), fetchFacultyLoading(true)];
+      if (activeTab === "schedules") {
+        loadTasks.push(fetchSchedules());
+      }
+      await Promise.all(loadTasks);
+      toast.success("Data refreshed.");
+    } catch (error) {
+      console.error("Manual refresh error:", error);
+      toast.error("Failed to refresh data.");
+    } finally {
+      setIsRefreshing(false);
+      setIsLoading(false);
+    }
+  };
 
   /**
    * *** IMPLEMENTATION: handleDeleteRoom for permanent deletion ***
@@ -357,10 +377,28 @@ function RoomContainer() {
             <h1 className="text-3xl md:text-4xl font-bold text-foreground tracking-tight">Classroom & Schedule Management</h1>
             <p className="text-muted-foreground mt-2">Monitor classroom utilization and view schedules by year level.</p>
           </div>
-          <Button onClick={handleAddRoom} className="shadow-md hover:shadow-lg transition-all"><Plus size={16} className="mr-2" />Add Room</Button>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              title="Refresh data"
+              aria-label="Refresh data"
+            >
+              <RefreshCw size={16} className={isRefreshing ? "animate-spin" : ""} />
+            </Button>
+            {activeTab === "classrooms" && (
+              <Button onClick={handleAddRoom} className="shadow-md hover:shadow-lg transition-all">
+                <Plus size={16} className="mr-2" />
+                Add Room
+              </Button>
+            )}
+          </div>
         </header>
 
-        <Tabs defaultValue="classrooms">
+        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "classrooms" | "schedules")}>
           <TabsList className="grid w-full grid-cols-2 mb-4">
             <TabsTrigger value="classrooms">Classroom List</TabsTrigger>
             <TabsTrigger value="schedules">Class Schedules</TabsTrigger>
@@ -368,7 +406,7 @@ function RoomContainer() {
 
           <TabsContent value="classrooms">
             <RoomTable
-              roomsData={rooms}
+              roomsData={cachedRooms as Room[]}
               scheduleData={schedules}
               subjectsData={subjects}
               onEdit={handleEditRoom}
@@ -382,8 +420,8 @@ function RoomContainer() {
             <ClassSchedule
               scheduleData={schedules}
               subjectsData={subjects}
-              roomsData={rooms}
-              facultyLoadingData={facultyLoading} 
+              roomsData={cachedRooms as Room[]}
+              facultyLoadingData={cachedFacultyLoading as FacultyLoadEntry[]} 
               savedSections={savedSections}
               onAddSchedule={handleAddScheduleEntry}
               onFilterApply={handleFilterApply}

@@ -19,11 +19,13 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 // Assuming Faculty type is now simplified to only the necessary fields
 import type { Faculty } from "../table/FacultyTable"; 
 
 import { toast } from "sonner";
 import axios from "../../../../plugin/axios";
+import { isAxiosError } from "axios";
 
 interface FacultyFormModalProps {
   isOpen: boolean;
@@ -80,9 +82,7 @@ export function FacultyFormModal({ isOpen, onClose, onSave, initialData, experti
   const [isLoadingDepartments, setIsLoadingDepartments] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   
-  // NEW STATE FOR EXPERTISE INPUT & FOCUS
-  const [newExpertiseInput, setNewExpertiseInput] = useState(""); 
-  const [isExpertiseInputFocused, setIsExpertiseInputFocused] = useState(false);
+  const [newExpertiseInput, setNewExpertiseInput] = useState("");
 
   useEffect(() => {
     const fetchDepartments = async () => {
@@ -139,7 +139,6 @@ export function FacultyFormModal({ isOpen, onClose, onSave, initialData, experti
       setAvailableExpertise(expertiseOptions);
     }
     setNewExpertiseInput(""); 
-    setIsExpertiseInputFocused(false);
   }, [initialData, isOpen, expertiseOptions]);
 
   // --- UPDATED handleChange ---
@@ -174,10 +173,6 @@ export function FacultyFormModal({ isOpen, onClose, onSave, initialData, experti
     if (file) { setImagePreview(URL.createObjectURL(file)); }
   };
   
-  const handleNewExpertiseInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setNewExpertiseInput(e.target.value);
-  };
-
   const handleSelectExpertise = (expertise: string) => {
     const expertiseToProcess = expertise.trim();
     if (expertiseToProcess && !formData.expertise.includes(expertiseToProcess)) {
@@ -187,7 +182,7 @@ export function FacultyFormModal({ isOpen, onClose, onSave, initialData, experti
           setAvailableExpertise((prev) => prev.filter((exp) => exp !== expertiseToProcess));
       }
     }
-    setNewExpertiseInput(""); // Clear input after selection
+    setNewExpertiseInput("");
   };
 
   const handleRemoveExpertise = (expertiseToRemove: string) => {
@@ -201,9 +196,6 @@ export function FacultyFormModal({ isOpen, onClose, onSave, initialData, experti
   const filteredExpertise = availableExpertise
       .filter(exp => exp.toLowerCase().includes(newExpertiseInput.toLowerCase()))
       .sort();
-
-  // Determine if the suggestion dropdown should be visible
-  const showSuggestions = isExpertiseInputFocused && (newExpertiseInput.length > 0 || availableExpertise.length > 0);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -268,8 +260,8 @@ export function FacultyFormModal({ isOpen, onClose, onSave, initialData, experti
         };
         onSave(resultFaculty);
         onClose();
-    } catch (error) {
-        if (axios.isAxiosError(error) && error.response) {
+    } catch (error: unknown) {
+        if (isAxiosError(error) && error.response) {
             const errors = error.response.data.errors as Record<string, string[]>;
             if (errors) {
                 const firstError = Object.values(errors)[0][0];
@@ -306,7 +298,7 @@ export function FacultyFormModal({ isOpen, onClose, onSave, initialData, experti
                   </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2"><Label htmlFor="name">Full Name</Label><Input id="name" name="name" value={formData.name} onChange={handleChange} required /></div>
+                  <div className="space-y-2"><Label htmlFor="name">Full Name</Label><Input id="name" name="name" value={formData.name} onChange={handleChange} placeholder="Enter full name" required /></div>
                   
                   <div className="space-y-2">
                       <Label htmlFor="email">Email Address</Label>
@@ -316,6 +308,7 @@ export function FacultyFormModal({ isOpen, onClose, onSave, initialData, experti
                           type="text"
                           value={formData.email} 
                           onChange={handleChange} 
+                          placeholder="Enter email address"
                           required 
                           pattern="[a-zA-Z0-9._%+-ñÑ]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}"
                           title="Please enter a valid email address. The 'ñ' character is allowed."
@@ -352,92 +345,64 @@ export function FacultyFormModal({ isOpen, onClose, onSave, initialData, experti
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 border-t pt-6">
                   {/* UPDATED: Value set to String(value) to display 0 */}
-                  <div className="space-y-2"><Label htmlFor="deload_units">Deload Units</Label><Input id="deload_units" name="deload_units" type="number" value={String(formData.deload_units)} onChange={handleChange} placeholder="0" /></div>
+                  <div className="space-y-2"><Label htmlFor="deload_units">Deload Units</Label><Input id="deload_units" name="deload_units" type="number" min={0} value={String(formData.deload_units)} onChange={handleChange} placeholder="0" /></div>
                   
                   <div className="space-y-2">
                       <Label htmlFor="teaching_load_units">Teaching Load</Label>
                       {/* UPDATED: Value set to String(value) to display 0 */}
-                      <Input id="teaching_load_units" name="teaching_load_units" type="number" value={String(formData.teaching_load_units)} onChange={handleChange} placeholder="e.g. 18" />
+                      <Input id="teaching_load_units" name="teaching_load_units" type="number" min={0} value={String(formData.teaching_load_units)} onChange={handleChange} placeholder="e.g. 18" />
                   </div>
                   
                   {/* UPDATED: Value set to String(value) to display 0 */}
-                  <div className="space-y-2"><Label htmlFor="overload_units">Overload Units</Label><Input id="overload_units" name="overload_units" type="number" value={String(formData.overload_units)} onChange={handleChange} placeholder="0" /></div>
+                  <div className="space-y-2"><Label htmlFor="overload_units">Overload Units</Label><Input id="overload_units" name="overload_units" type="number" min={0} value={String(formData.overload_units)} onChange={handleChange} placeholder="0" /></div>
               </div>
               
               {/* UPDATED EXPERTISE FIELD (Token/Tag Input with Autocomplete/Suggestions) */}
               <div className="space-y-2">
                   <Label htmlFor="expertise-input">Expertise</Label>
-                  <div className="relative">
-                      {/* Token Input Area (Badges + Input) */}
-                      <div className="flex flex-wrap items-center w-full rounded-md border border-input bg-background text-sm ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 min-h-10 p-1.5">
-                          {/* Existing Badges Display */}
-                          {formData.expertise.map((exp) => {
+                  <div className="space-y-2">
+                      <Command className="rounded-md border border-input">
+                        {formData.expertise.length > 0 && (
+                          <div className="flex flex-wrap gap-2 p-2 border-b border-input">
+                            {formData.expertise.map((exp) => {
                               const colorIndex = getStringHash(exp) % expertiseColorPalette.length;
                               const color = expertiseColorPalette[colorIndex];
                               return (
-                                  <Badge key={exp} className={`font-normal hover:${color.bg} ${color.bg} hover:${color.text} ${color.text} mr-1.5 mb-1.5`}>
-                                      {exp}
-                                      <button type="button" onClick={() => handleRemoveExpertise(exp)} className="ml-1.5 rounded-full hover:bg-black/10 p-0.5" aria-label={`Remove ${exp}`}>
-                                          <X size={14} />
-                                      </button>
-                                  </Badge>
+                                <Badge key={exp} className={`font-normal ${color.bg} ${color.text}`}>
+                                  {exp}
+                                  <button type="button" onClick={() => handleRemoveExpertise(exp)} className="ml-1.5 rounded-full p-0.5" aria-label={`Remove ${exp}`}>
+                                    <X size={14} />
+                                  </button>
+                                </Badge>
                               );
-                          })}
-                          
-                          {/* Input field for typing/searching */}
-                          <Input
-                              id="expertise-input"
-                              value={newExpertiseInput}
-                              onChange={handleNewExpertiseInputChange}
-                              onKeyDown={(e) => {
-                                  if (e.key === 'Enter' && newExpertiseInput.trim() !== '') {
-                                      e.preventDefault();
-                                      handleSelectExpertise(newExpertiseInput);
-                                  }
-                              }}
-                              onFocus={() => setIsExpertiseInputFocused(true)}
-                              onBlur={() => {
-                                  // Delay onBlur so that click on suggestion can register
-                                  setTimeout(() => setIsExpertiseInputFocused(false), 100);
-                              }}
-                              placeholder={formData.expertise.length === 0 ? "Type to add or select expertise..." : ""}
-                              className="border-none focus-visible:ring-0 focus-visible:ring-offset-0 h-8 p-0 flex-1 min-w-[50px] bg-transparent shadow-none"
-                              autoComplete="off"
-                          />
-                      </div>
-
-                      {/* Suggestions Dropdown */}
-                      {showSuggestions && (
-                          <div className="absolute z-10 w-full bg-popover border border-input rounded-md shadow-lg mt-1 max-h-48 overflow-y-auto">
-                              
-                              {/* Option to add new expertise (only if typing and it's not a suggestion) */}
-                              {!formData.expertise.map(e => e.toLowerCase()).includes(newExpertiseInput.trim().toLowerCase()) && 
-                               !availableExpertise.map(e => e.toLowerCase()).includes(newExpertiseInput.trim().toLowerCase()) &&
-                               newExpertiseInput.trim() !== '' && (
-                                  <div
-                                      className="px-4 py-2 cursor-pointer bg-primary text-primary-foreground hover:bg-primary/90 text-center border-b font-medium"
-                                      onClick={() => handleSelectExpertise(newExpertiseInput)}
-                                      onMouseDown={(e) => e.preventDefault()} 
-                                  >
-                                      Add New Expertise: **{newExpertiseInput.trim()}**
-                                  </div>
-                              )}
-
-                              {/* Filtered/Available Expertise List */}
-                              {filteredExpertise.length > 0 ? filteredExpertise.map((exp) => (
-                                  <div
-                                      key={exp}
-                                      className="px-4 py-2 cursor-pointer hover:bg-accent hover:text-accent-foreground"
-                                      onClick={() => handleSelectExpertise(exp)}
-                                      onMouseDown={(e) => e.preventDefault()} // Prevent blur from closing the list before the click registers
-                                  >
-                                      {exp}
-                                  </div>
-                              )) : newExpertiseInput.trim() === '' && (
-                                <div className="p-4 text-center text-sm text-muted-foreground">All expertise selected.</div>
-                              )}
+                            })}
                           </div>
-                      )}
+                        )}
+                        <CommandInput
+                          placeholder="Search or add expertise..."
+                          value={newExpertiseInput}
+                          onValueChange={setNewExpertiseInput}
+                        />
+                        <CommandList className="max-h-48">
+                          <CommandEmpty>
+                            <button
+                              type="button"
+                              className="w-full px-3 py-2 text-left text-sm hover:bg-accent"
+                              onClick={() => handleSelectExpertise(newExpertiseInput)}
+                              disabled={!newExpertiseInput.trim()}
+                            >
+                              Add new: {newExpertiseInput.trim() || "Type expertise first"}
+                            </button>
+                          </CommandEmpty>
+                          <CommandGroup heading="Available Expertise">
+                            {filteredExpertise.map((exp) => (
+                              <CommandItem key={exp} value={exp} onSelect={() => handleSelectExpertise(exp)}>
+                                {exp}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
                   </div>
               </div>
               

@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import axios from "../../../plugin/axios";
 import { Button } from "@/components/ui/button";
-import { FileText, Calendar, BarChart3, Users, BookOpen, ClipboardList, Loader2 } from "lucide-react";
+import { FileText, Calendar, BarChart3, Users, BookOpen, ClipboardList, Loader2, RefreshCw } from "lucide-react";
 
 // Import the actual report components from their respective paths
 import { FacultyLoadingReport } from "./reports/FacultyLoadingReport"; 
@@ -30,48 +30,43 @@ function ReportsPage() {
   });
   const [loadingKpis, setLoadingKpis] = useState(true);
   const [kpiError, setKpiError] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  // --- API Fetch for KPIs ---
-  useEffect(() => {
-    const fetchKpis = async () => {
-      try {
-        setLoadingKpis(true);
-        setKpiError(null);
-        
-        const accessToken = localStorage.getItem('accessToken');
-
-        if (!accessToken) {
-            setKpiError("Authentication token not found. Please log in.");
-            setLoadingKpis(false);
-            return;
-        }
-
-        const config = {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`
-          }
-        };
-
-        const response = await axios.get<{ success: boolean; data: KpiData }>(
-            'reports/kpis', 
-            config
-        );
-        
-        if (response.data.success) {
-          setKpiData(response.data.data);
-        } else {
-            setKpiError("Failed to load KPI data from the server.");
-        }
-      } catch (error) {
-        console.error("Error fetching KPI data:", error);
-        setKpiError("Could not connect to the API or fetch KPI data.");
-      } finally {
-        setLoadingKpis(false);
+  const fetchKpis = useCallback(async () => {
+    try {
+      setLoadingKpis(true);
+      setKpiError(null);
+      const accessToken = localStorage.getItem('accessToken');
+      if (!accessToken) {
+        setKpiError("Authentication token not found. Please log in.");
+        return;
       }
-    };
-
-    fetchKpis();
+      const response = await axios.get<{ success: boolean; data: KpiData }>(
+        'reports/kpis',
+        { headers: { 'Authorization': `Bearer ${accessToken}` } }
+      );
+      if (response.data.success) {
+        setKpiData(response.data.data);
+      } else {
+        setKpiError("Failed to load KPI data from the server.");
+      }
+    } catch (error) {
+      console.error("Error fetching KPI data:", error);
+      setKpiError("Could not connect to the API or fetch KPI data.");
+    } finally {
+      setLoadingKpis(false);
+    }
   }, []);
+
+  useEffect(() => { fetchKpis(); }, [fetchKpis]);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    setRefreshKey(k => k + 1);
+    await fetchKpis();
+    setIsRefreshing(false);
+  };
 
   // Map the fetched data to the format used for rendering
   const displayedKpiData = [
@@ -341,6 +336,16 @@ function ReportsPage() {
             <p className="text-muted-foreground mt-2">View and export faculty loading, schedules, and workloads.</p>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            title="Refresh data"
+            aria-label="Refresh data"
+          >
+            <RefreshCw size={18} className={isRefreshing ? 'animate-spin' : ''} />
+          </button>
           <Button variant="outline" onClick={() => exportPdf()}><FileText className="h-4 w-4 mr-2" /> Export PDF</Button>
         </div>
       </header>
@@ -370,10 +375,10 @@ function ReportsPage() {
           transition={{ duration: 0.2 }}
         >
           <div id="report-content">
-            {activeTab === "loading" && <FacultyLoadingReport />} 
-            {activeTab === "schedules" && <FacultySchedulesView />} 
-            {activeTab === "workloads" && <FacultyWorkloadsView />}
-            {activeTab === "studyload" && <FacultyStudyLoadView />}
+            {activeTab === "loading" && <FacultyLoadingReport key={refreshKey} />}
+            {activeTab === "schedules" && <FacultySchedulesView key={refreshKey} />}
+            {activeTab === "workloads" && <FacultyWorkloadsView key={refreshKey} />}
+            {activeTab === "studyload" && <FacultyStudyLoadView key={refreshKey} />}
           </div>
         </motion.div>
       </AnimatePresence>

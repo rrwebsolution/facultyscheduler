@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Plus, Calendar, Archive, Activity } from 'lucide-react';
+import { Search, Plus, Calendar, Archive, Activity, RefreshCw } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -26,6 +26,8 @@ function Curriculum({ readOnly = false }: { readOnly?: boolean }) {
     const [yearFilter, setYearFilter] = useState('All Years');
     const [statusFilter, setStatusFilter] = useState('Active');
     const [selectedProgram, setSelectedProgram] = useState<Program | null>(null);
+
+    const [isRefreshing, setIsRefreshing] = useState(false);
 
     const [isProgramModalOpen, setIsProgramModalOpen] = useState(false);
     const [editingProgram, setEditingProgram] = useState<Program | null>(null);
@@ -107,6 +109,12 @@ function Curriculum({ readOnly = false }: { readOnly?: boolean }) {
     useEffect(() => { if (updatedSubjectData) setUpdatedSubjectData(null); }, [updatedSubjectData]);
     useEffect(() => { if (newSemesterData) setNewSemesterData(null); }, [newSemesterData]);
     useEffect(() => { if (updatedSemesterData) setUpdatedSemesterData(null); }, [updatedSemesterData]);
+
+    const handleRefresh = async () => {
+        setIsRefreshing(true);
+        await fetchPrograms(true);
+        setIsRefreshing(false);
+    };
 
     // --- 2. HANDLER FUNCTION (Corrected) ---
     // This now accepts `effectiveYear` and saves it to the state, triggering the modal.
@@ -251,9 +259,21 @@ function Curriculum({ readOnly = false }: { readOnly?: boolean }) {
 
     return (
         <>
-            <header className="mb-8">
-                <h1 className="text-3xl md:text-4xl font-bold text-foreground tracking-tight">Curriculum Management</h1>
-                <p className="text-muted-foreground mt-2">Manage academic programs, semesters, and their subjects.</p>
+            <header className="mb-8 flex justify-between items-center">
+                <div>
+                    <h1 className="text-3xl md:text-4xl font-bold text-foreground tracking-tight">Curriculum Management</h1>
+                    <p className="text-muted-foreground mt-2">Manage academic programs, semesters, and their subjects.</p>
+                </div>
+                <button
+                    type="button"
+                    onClick={handleRefresh}
+                    disabled={isRefreshing}
+                    className="p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                    title="Refresh data"
+                    aria-label="Refresh data"
+                >
+                    <RefreshCw size={18} className={isRefreshing ? 'animate-spin' : ''} />
+                </button>
             </header>
             <div className="bg-card p-4 md:p-6 rounded-lg shadow-sm border border-border mb-8">
                 <div className="flex flex-col md:flex-row gap-4 justify-between items-center">

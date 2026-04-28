@@ -1,10 +1,12 @@
 import ReactDOM from 'react-dom/client';
 import { Navigate, RouterProvider, createBrowserRouter } from 'react-router-dom';
 import React, { Suspense, lazy } from 'react';
+import { Provider } from 'react-redux';
 import NotFound from './notFound';
 import './index.css';
 import Loader from './components/loader';
 import { Toaster } from 'sonner';
+import { store } from './store/store';
 
 
 import AdminContainerLayouts  from './views/admin/AdminContainerLayouts';
@@ -295,8 +297,8 @@ function wait(time: number) {
 
 // Render application
 ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
+  <Provider store={store}>
     <RouterProvider router={router} />
-    <Toaster richColors position="top-right" /> 
-  </React.StrictMode>
+    <Toaster richColors position="top-right" />
+  </Provider>
 );

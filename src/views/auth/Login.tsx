@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import React, { useState } from 'react';
 import { Facebook, Instagram, Lock, LogInIcon, Mail, Twitter, Eye, EyeOff } from 'lucide-react';
 import axios from '../../plugin/axios';
+import { isAxiosError } from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
@@ -71,9 +72,9 @@ const Login: React.FC = () => {
                     default:
                         navigate('/facultyscheduler/admin/user-dashboard');
                 }
-        } catch (error) {
+        } catch (error: unknown) {
             console.error('Login error:', error);
-            if (axios.isAxiosError(error)) {
+            if (isAxiosError(error)) {
                 const errorMessage = error.response?.data?.message;
                 if (error.response?.status === 401) {
                     toast.error(errorMessage || 'Invalid credentials 😓');

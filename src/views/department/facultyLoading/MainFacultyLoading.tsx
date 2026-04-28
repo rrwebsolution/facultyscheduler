@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { Info, Search } from 'lucide-react';
 import Swal from 'sweetalert2';
-import axios from '../../../plugin/axios';
 import { Input } from '@/components/ui/input';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { fetchFaculties as fetchFacultiesAction, fetchSubjects as fetchSubjectsAction } from '@/store/slices/dataCacheSlice';
 
 import { FacultyCard } from './components/card/FacultyCard';
 import { AssignSubjectDialog } from './components/AssignSubjectDialog';
@@ -13,11 +14,13 @@ import type { Faculty, Subject } from './type';
 
 
 function MainFacultyLoading() {
-    const [faculties, setFaculties] = useState<Faculty[]>([]);
-    const [allSubjects, setAllSubjects] = useState<Subject[]>([]);
+    const dispatch = useAppDispatch();
+    const faculties = useAppSelector((state) => state.dataCache.faculties) as Faculty[];
+    const allSubjects = useAppSelector((state) => state.dataCache.subjects) as Subject[];
+    const facultiesStatus = useAppSelector((state) => state.dataCache.facultiesStatus);
+    const subjectsStatus = useAppSelector((state) => state.dataCache.subjectsStatus);
     const [subjectsForModal, setSubjectsForModal] = useState<Subject[]>([]);
     const [facultyQuery, setFacultyQuery] = useState('');
-    const [isLoading, setIsLoading] = useState(true);
     
     // State for Assign Subject Dialog
     const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
@@ -30,50 +33,26 @@ function MainFacultyLoading() {
 
     useEffect(() => {
         const fetchInitialData = async () => {
-            setIsLoading(true);
             try {
                 const token = localStorage.getItem('accessToken');
                 if (!token) {
                     Swal.fire({ icon: 'warning', title: 'Authentication Error', text: 'You must be logged in.' });
-                    setIsLoading(false);
                     return;
                 }
-                const axiosConfig = { headers: { Authorization: `Bearer ${token}` } };
-
-                const [facultyRes, subjectRes] = await Promise.all([
-                    axios.get(`/faculties`, axiosConfig),
-                    axios.get(`/get-subjects`, axiosConfig)
-                ]);
-
-               const mappedFaculties: Faculty[] = facultyRes.data.faculties.map((f: any) => ({
-                    id: f.id,
-                    name: f.user.name, 
-                    
-                    department: f.department || "No Department", 
-                    expertise: f.expertises ? f.expertises.map((e: any) => e.list_of_expertise) : [],
-                    profile_picture: f.profile_picture,
-
-                    // Exact values from backend (Confirmed by JSON)
-                    t_load_units: f.t_load_units ?? 0,    
-                    deload_units: f.deload_units ?? 0,    
-                    overload_units: f.overload_units ?? 0,
-
-                    availability: {},
-                    assignedSubjects: [],
-                }));
-
-                setFaculties(mappedFaculties);
-                setAllSubjects(subjectRes.data.subject || []);
+                const tasks: Promise<unknown>[] = [];
+                if (facultiesStatus === 'idle') tasks.push(dispatch(fetchFacultiesAction(false)).unwrap());
+                if (subjectsStatus === 'idle') tasks.push(dispatch(fetchSubjectsAction(false)).unwrap());
+                if (tasks.length > 0) await Promise.all(tasks);
 
             } catch (error) {
                 console.error("Error fetching data:", error);
                 Swal.fire({ icon: 'error', title: 'Fetch Error', text: 'Failed to retrieve data from the server.' });
-            } finally {
-                setIsLoading(false);
             }
         };
         fetchInitialData();
-    }, []);
+    }, [dispatch, facultiesStatus, subjectsStatus]);
+
+    const isLoading = facultiesStatus === 'loading' || subjectsStatus === 'loading' || (facultiesStatus === 'idle' && subjectsStatus === 'idle');
 
     const filteredFaculties = faculties.filter(f =>
         f.name.toLowerCase().includes(facultyQuery.toLowerCase()) ||
