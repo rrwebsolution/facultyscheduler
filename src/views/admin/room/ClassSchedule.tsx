@@ -430,6 +430,13 @@ const ClassSchedule: React.FC<Props> = ({
         await applyFilterFor(year, section, programId);
     };
 
+    const handleClearFilter = () => {
+        setSelectedProgramId("");
+        setSelectedYearLevel("");
+        setSelectedSection("");
+        setServerSections(null);
+    };
+
     const handleOpenAddClass = () => {
         setModalYearLevel("");
         setModalSection("");
@@ -936,6 +943,17 @@ const ClassSchedule: React.FC<Props> = ({
                             >
                                 {isFilterLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="h-4 w-4 mr-2" />}
                                 {isFilterLoading ? "Loading..." : "Apply Filter"}
+                            </Button>
+                        </div>
+                        <div className="flex items-end">
+                            <Button
+                                onClick={handleClearFilter}
+                                disabled={isFilterLoading}
+                                variant="outline"
+                                className="h-10 px-4"
+                                title="Clear Program, Year, and Section filters"
+                            >
+                                Clear
                             </Button>
                         </div>
                     </div>
