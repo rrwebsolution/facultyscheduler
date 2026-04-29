@@ -82,7 +82,7 @@ export function CurriculumDetailModal({
                             hoursTotal: sub.total_hrs, hoursLec: sub.total_lec_hrs, hoursLab: sub.total_lab_hrs,
                             prerequisite: sub.pre_requisite || 'None'
                         })),
-                        isActive: apiSem.status === 0,
+                        isActive: apiSem.status === 1,
                         startDate: apiSem.start_date, endDate: apiSem.end_date
                     };
                 });
