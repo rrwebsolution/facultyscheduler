@@ -22,6 +22,7 @@ export interface Program {
     id: number;
     program_name: string; 
     abbreviation: string; 
+    status?: number;
 }
 
 interface ProgramApiResponse {
@@ -189,10 +190,11 @@ const ClassSchedule: React.FC<Props> = ({
                 const response = await axios.get<ProgramApiResponse>('program', {
                     headers: {
                         'Authorization': `Bearer ${finalToken}`,
-                        'Accept': 'applichn/json'
+                        'Accept': 'application/json'
                     }
                 });
-                setProgramsData(response.data.programs); 
+                const activePrograms = (response.data.programs || []).filter((program) => Number(program.status) === 0);
+                setProgramsData(activePrograms); 
             } catch (error: any) {
                 console.error("Failed to fetch programs:", error);
                 const errorMessage = isAxiosError(error)
