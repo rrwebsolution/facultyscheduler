@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { User, LogOut, Settings, Calendar, Clock, Menu, X, PanelLeftClose, PanelLeftOpen, Sun, Moon, Laptop, ChevronDown } from 'lucide-react';
+import { User, LogOut, Settings, Calendar, Clock, Menu, X, PanelLeftClose, PanelLeftOpen, Sun, Moon, Laptop, ChevronDown, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Variants } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
@@ -17,6 +17,7 @@ interface HeaderProps {
 const FacultyHeader = ({ isSidebarOpen, setIsSidebarOpen, isSidebarCollapsed, setIsSidebarCollapsed }: HeaderProps) => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isThemeOpen, setIsThemeOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [now, setNow] = useState(() => new Date());
 
   const { theme, setTheme } = useTheme();
@@ -31,6 +32,9 @@ const FacultyHeader = ({ isSidebarOpen, setIsSidebarOpen, isSidebarCollapsed, se
 
   const userString = localStorage.getItem('user');
   const user = userString ? JSON.parse(userString) : { name: 'Faculty', email: 'faculty@example.com' };
+  const profileSrc = user?.profile_picture
+    ? `${(import.meta.env.VITE_URL || '').replace(/\/$/, '')}/${user.profile_picture}`
+    : `https://i.pravatar.cc/150?u=${user.email}`;
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -42,6 +46,8 @@ const FacultyHeader = ({ isSidebarOpen, setIsSidebarOpen, isSidebarCollapsed, se
   }, []);
 
   const handleLogout = async () => {
+    if (isLoggingOut) return;
+    setIsLoggingOut(true);
     const token = localStorage.getItem('accessToken');
     if (token) {
         try {
@@ -55,6 +61,7 @@ const FacultyHeader = ({ isSidebarOpen, setIsSidebarOpen, isSidebarCollapsed, se
     toast.success('Logged out successfully!');
     navigate('/user-login');
     setIsProfileOpen(false);
+    setIsLoggingOut(false);
   };
 
   const dropdownVariants: Variants = {
@@ -107,18 +114,21 @@ const FacultyHeader = ({ isSidebarOpen, setIsSidebarOpen, isSidebarCollapsed, se
                 <span className="font-semibold text-sm text-foreground uppercase">{user.name}</span>
                 <span className="text-xs text-muted-foreground">Faculty</span>
               </div>
-              <img src={`https://i.pravatar.cc/150?u=${user.email}`} alt="Profile" className="w-9 h-9 rounded-full border-2 border-border"/>
+              <img src={profileSrc} alt="Profile" className="w-9 h-9 rounded-full border-2 border-border"/>
               <motion.div animate={{ rotate: isProfileOpen ? 180 : 0 }}><ChevronDown size={16} className="text-muted-foreground" /></motion.div>
             </button>
             <AnimatePresence>
               {isProfileOpen && (
                 <motion.div variants={dropdownVariants} initial="hidden" animate="visible" exit="exit" className="absolute right-0 mt-2 w-60 bg-popover rounded-md shadow-lg border z-50">
-                  <div className="flex items-center gap-3 p-3 border-b"><img src={`https://i.pravatar.cc/150?u=${user.email}`} className="w-10 h-10 rounded-full"/><div><p className="font-semibold text-sm">{user.name}</p><p className="text-xs text-muted-foreground truncate">{user.email}</p></div></div>
+                  <div className="flex items-center gap-3 p-3 border-b"><img src={profileSrc} className="w-10 h-10 rounded-full"/><div><p className="font-semibold text-sm">{user.name}</p><p className="text-xs text-muted-foreground truncate">{user.email}</p></div></div>
                   <div className="p-1">
-                    <Link to="#" className="w-full text-left flex items-center gap-2 px-2 py-1.5 text-sm rounded-sm hover:bg-muted"><User size={14} /> Profile</Link>
-                    <Link to="#" className="w-full text-left flex items-center gap-2 px-2 py-1.5 text-sm rounded-sm hover:bg-muted"><Settings size={14} /> Settings</Link>
+                    <Link to="/faculty/profile" onClick={() => setIsProfileOpen(false)} className="w-full text-left flex items-center gap-2 px-2 py-1.5 text-sm rounded-sm hover:bg-muted"><User size={14} /> Profile</Link>
+                    <Link to="/faculty/settings" onClick={() => setIsProfileOpen(false)} className="w-full text-left flex items-center gap-2 px-2 py-1.5 text-sm rounded-sm hover:bg-muted"><Settings size={14} /> Settings</Link>
                     <div className="h-px bg-border my-1" />
-                    <button onClick={handleLogout} className="w-full text-left flex items-center gap-2 px-2 py-1.5 text-sm rounded-sm text-destructive hover:bg-destructive/10"><LogOut size={14} /> Logout</button>
+                    <button onClick={handleLogout} disabled={isLoggingOut} className="w-full text-left flex items-center gap-2 px-2 py-1.5 text-sm rounded-sm text-destructive hover:bg-destructive/10 disabled:opacity-60 disabled:cursor-not-allowed">
+                      {isLoggingOut ? <Loader2 size={14} className="animate-spin" /> : <LogOut size={14} />}
+                      {isLoggingOut ? 'Logging out...' : 'Logout'}
+                    </button>
                   </div>
                 </motion.div>
               )}

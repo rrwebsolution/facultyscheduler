@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { User, Users, LogOut, Settings, Calendar, Clock, Menu, X, PanelLeftClose, PanelLeftOpen, Sun, Moon, Laptop, ChevronDown } from 'lucide-react';
+import { User, LogOut, Settings, Calendar, Clock, Menu, X, PanelLeftClose, PanelLeftOpen, Sun, Moon, Laptop, ChevronDown, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Variants } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
@@ -17,6 +17,7 @@ interface HeaderProps {
 const Header = ({ isSidebarOpen, setIsSidebarOpen, isSidebarCollapsed, setIsSidebarCollapsed }: HeaderProps) => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isThemeOpen, setIsThemeOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [now, setNow] = useState(() => new Date());
 
   const { theme, setTheme } = useTheme();
@@ -31,6 +32,9 @@ const Header = ({ isSidebarOpen, setIsSidebarOpen, isSidebarCollapsed, setIsSide
 
   const userString = localStorage.getItem('user');
   const user = userString ? JSON.parse(userString) : { name: 'Admin', email: 'admin@example.com' };
+  const profileSrc = user?.profile_picture
+    ? `${(import.meta.env.VITE_URL || '').replace(/\/$/, '')}/${user.profile_picture}`
+    : `https://i.pravatar.cc/150?u=${user.email}`;
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -42,11 +46,14 @@ const Header = ({ isSidebarOpen, setIsSidebarOpen, isSidebarCollapsed, setIsSide
   }, []);
 
   const handleLogout = async () => {
+    if (isLoggingOut) return;
+    setIsLoggingOut(true);
     const token = localStorage.getItem('accessToken');
     if (!token) {
         // Kung walay token, limpyohan lang ang frontend
         localStorage.removeItem('user');
         navigate('/user-login');
+        setIsLoggingOut(false);
         return;
     }
 
@@ -66,11 +73,8 @@ const Header = ({ isSidebarOpen, setIsSidebarOpen, isSidebarCollapsed, setIsSide
         localStorage.removeItem('user');
         setIsProfileOpen(false);
         navigate('/user-login');
+        setIsLoggingOut(false);
     }
-  };
-
-  const handleSwitchAccount = () => {
-    handleLogout(); // Ang switch account kay pareho ra og logic sa logout
   };
 
   const dropdownVariants: Variants = {
@@ -123,7 +127,7 @@ const Header = ({ isSidebarOpen, setIsSidebarOpen, isSidebarCollapsed, setIsSide
                 <span className="font-semibold text-sm text-foreground uppercase">{user.name}</span>
                 <span className="text-xs text-muted-foreground">Administrator</span>
               </div>
-              <img src={`https://i.pravatar.cc/150?u=${user.email}`} alt="Profile" className="w-9 h-9 rounded-full border-2 border-border"/>
+              <img src={profileSrc} alt="Profile" className="w-9 h-9 rounded-full border-2 border-border"/>
               <motion.div animate={{ rotate: isProfileOpen ? 180 : 0 }} transition={{ duration: 0.2 }}>
                 <ChevronDown size={16} className="text-muted-foreground" />
               </motion.div>
@@ -132,18 +136,20 @@ const Header = ({ isSidebarOpen, setIsSidebarOpen, isSidebarCollapsed, setIsSide
               {isProfileOpen && (
                 <motion.div variants={dropdownVariants} initial="hidden" animate="visible" exit="exit" className="absolute right-0 mt-2 w-60 bg-popover rounded-md shadow-lg border z-50">
                   <div className="flex items-center gap-3 p-3 border-b border-border">
-                    <img src={`https://i.pravatar.cc/150?u=${user.email}`} alt="Profile" className="w-10 h-10 rounded-full"/>
+                    <img src={profileSrc} alt="Profile" className="w-10 h-10 rounded-full"/>
                     <div>
                       <p className="font-semibold text-sm text-popover-foreground">{user.name}</p>
                       <p className="text-xs text-muted-foreground truncate">{user.email}</p>
                     </div>
                   </div>
                   <div className="p-1">
-                    <Link to="#" onClick={() => setIsProfileOpen(false)} className="w-full text-left flex items-center gap-2 px-2 py-1.5 text-sm rounded-sm text-popover-foreground hover:bg-muted"><User size={14} /> Profile</Link>
-                    <Link to="#" onClick={() => setIsProfileOpen(false)} className="w-full text-left flex items-center gap-2 px-2 py-1.5 text-sm rounded-sm text-popover-foreground hover:bg-muted"><Settings size={14} /> Settings</Link>
-                    <button onClick={handleSwitchAccount} className="w-full text-left flex items-center gap-2 px-2 py-1.5 text-sm rounded-sm text-popover-foreground hover:bg-muted"><Users size={14} /> Switch Account</button>
+                    <Link to="/admin/profile" onClick={() => setIsProfileOpen(false)} className="w-full text-left flex items-center gap-2 px-2 py-1.5 text-sm rounded-sm text-popover-foreground hover:bg-muted"><User size={14} /> Profile</Link>
+                    <Link to="/admin/settings" onClick={() => setIsProfileOpen(false)} className="w-full text-left flex items-center gap-2 px-2 py-1.5 text-sm rounded-sm text-popover-foreground hover:bg-muted"><Settings size={14} /> Settings</Link>
                     <div className="h-px bg-border my-1" />
-                    <button onClick={handleLogout} className="w-full text-left flex items-center gap-2 px-2 py-1.5 text-sm rounded-sm text-destructive hover:bg-destructive/10"><LogOut size={14} /> Logout</button>
+                    <button onClick={handleLogout} disabled={isLoggingOut} className="w-full text-left flex items-center gap-2 px-2 py-1.5 text-sm rounded-sm text-destructive hover:bg-destructive/10 disabled:opacity-60 disabled:cursor-not-allowed">
+                      {isLoggingOut ? <Loader2 size={14} className="animate-spin" /> : <LogOut size={14} />}
+                      {isLoggingOut ? 'Logging out...' : 'Logout'}
+                    </button>
                   </div>
                 </motion.div>
               )}

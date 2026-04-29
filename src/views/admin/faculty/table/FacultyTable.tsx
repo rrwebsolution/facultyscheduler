@@ -27,6 +27,7 @@ import {
   CalendarDays,
   List,
   RefreshCw,
+  KeyRound,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { AddFacultyButton } from "../modal/AddFacultyButton";
@@ -101,6 +102,7 @@ function FacultyTable() {
 
 
   const [highlightedFacultyId, setHighlightedFacultyId] = useState<number | null>(null);
+  const [resettingFacultyId, setResettingFacultyId] = useState<number | null>(null);
   const navigate = useNavigate();
 
   const fetchFaculty = useCallback(async (forceRefresh = false) => {
@@ -188,12 +190,13 @@ function FacultyTable() {
    */
   const handleDeactivate = (facultyId: number) => {
     Swal.fire({
-        title: 'Are you absolutely sure?', 
-        text: "This faculty member and ALL their related data (expertises, loadings, etc.) will be PERMANENTLY DELETED and cannot be recovered.", 
+        title: 'Delete faculty record?',
+        text: "This action is permanent and cannot be undone. Deletion is useless if this faculty already has assigned subjects, schedule loads, or availability slots.",
         icon: 'warning',
         showCancelButton: true, 
         confirmButtonColor: '#d33', 
-        confirmButtonText: 'Yes, permanently delete it!'
+        cancelButtonText: 'Cancel',
+        confirmButtonText: 'Delete'
     }).then(async (result) => {
         if (result.isConfirmed) {
             const token = localStorage.getItem('accessToken');
@@ -202,13 +205,14 @@ function FacultyTable() {
                 // The DELETE request maps to the backend function $faculty->delete()
                 const response = await axios.delete(`/faculties/${facultyId}`, { headers: { 'Authorization': `Bearer ${token}` } });
                 
-                toast.success(response.data.message || "Faculty deleted successfully!");
+                toast.success(response.data.message || "Faculty record deleted successfully.");
                 
                 // KEY CHANGE: Remove the deleted faculty from the state
                 setAllFaculty(prev => prev.filter(f => f.id !== facultyId)); 
                 
-            } catch (error) {
-                toast.error("Failed to delete faculty. This faculty might have related records that prevent deletion.");
+            } catch (error: any) {
+                const message = error?.response?.data?.message || "Failed to delete faculty.";
+                toast.error(message);
             }
         }
     });
@@ -234,6 +238,42 @@ function FacultyTable() {
   // };
 
   const handleAdd = () => { setEditingFaculty(null); setIsModalOpen(true); };
+
+  const handleResetPassword = (facultyMember: Faculty) => {
+    Swal.fire({
+      title: `Reset password for ${facultyMember.name}?`,
+      text: "This will reset the account password to the system default.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#2563eb",
+      cancelButtonColor: "#6b7280",
+      confirmButtonText: "Yes, reset password"
+    }).then(async (result) => {
+      if (!result.isConfirmed) return;
+
+      const token = localStorage.getItem("accessToken");
+      if (!token) {
+        toast.error("Authentication required.");
+        return;
+      }
+
+      setResettingFacultyId(facultyMember.id);
+      try {
+        const response = await axios.post(
+          `/faculties/${facultyMember.id}/reset-password`,
+          {},
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        const defaultPassword = response?.data?.temporary_password || "@password123";
+        toast.success(`Password reset successful. Temporary password: ${defaultPassword}`);
+      } catch (error: any) {
+        const msg = error?.response?.data?.message || "Failed to reset password.";
+        toast.error(msg);
+      } finally {
+        setResettingFacultyId(null);
+      }
+    });
+  };
   
   const handleEdit = (facultyMember: Faculty) => { 
     setEditingFaculty(facultyMember); 
@@ -353,7 +393,7 @@ function FacultyTable() {
                 <TableHead className="text-center">Deload</TableHead>
                 <TableHead className="text-center">Overload</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="text-right w-[140px]">Actions</TableHead>
+                <TableHead className="text-right w-[180px]">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -419,8 +459,20 @@ function FacultyTable() {
                           
                           {/* 3. EDIT FACULTY (EDIT ICON) */}
                         <Button variant="ghost" size="icon" title="Edit Faculty" onClick={() => handleEdit(f)} className="h-8 w-8 text-muted-foreground hover:text-primary"><Edit className="h-4 w-4 text-blue-500" /></Button>
+
+                          {/* 4. RESET PASSWORD (KEY ICON) */}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          title="Reset Password"
+                          onClick={() => handleResetPassword(f)}
+                          disabled={resettingFacultyId === f.id}
+                          className="h-8 w-8 text-muted-foreground hover:text-primary"
+                        >
+                          <KeyRound className={`h-4 w-4 text-amber-500 ${resettingFacultyId === f.id ? 'animate-pulse' : ''}`} />
+                        </Button>
                         
-                          {/* 4. PERMANENT DELETE (TRASH2 ICON) */}
+                          {/* 5. PERMANENT DELETE (TRASH2 ICON) */}
                             <Button 
                                 variant="ghost" 
                                 size="icon" 

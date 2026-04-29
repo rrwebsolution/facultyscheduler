@@ -5,10 +5,10 @@ import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription, Dr
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Layers, Edit, Trash2, Plus, SlidersHorizontal, CalendarDays, BookOpenCheck } from 'lucide-react';
+import { Layers, Edit, Trash2, Plus, SlidersHorizontal, CalendarDays, BookOpenCheck, RefreshCw } from 'lucide-react';
 import { type Program, type Subject, type Semester, professionalElectives } from '../types';
 import type { JSX } from "react";
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import axios from '../../../../plugin/axios';
 import { toast } from 'sonner';
 
@@ -44,6 +44,8 @@ const sortSemesterKeys = (a: string, b: string): number => {
     return 0;
 };
 
+const semestersCacheStore: Record<number, { data: { [key: string]: Semester }; refreshKey?: number }> = {};
+
 export function CurriculumDetailModal({
     isOpen, onClose, program, onAddSemester, onEditSemester,
     onAddSubject, onEditSubject, onDeleteSubject, onSetSemesterStatus,
@@ -51,6 +53,7 @@ export function CurriculumDetailModal({
 }: CurriculumDetailModalProps): JSX.Element {
     const [semesters, setSemesters] = useState<{ [key: string]: Semester }>({});
     const [isLoading, setIsLoading] = useState<boolean>(false);
+    const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
     const [selectedElective, setSelectedElective] = useState<Subject | null>(null);
 
@@ -59,39 +62,71 @@ export function CurriculumDetailModal({
         setIsDrawerOpen(true);
     };
 
+    const fetchSemestersFromApi = useCallback(async (showLoader = true) => {
+        if (showLoader) setIsLoading(true);
+        const token = localStorage.getItem('accessToken');
+        if (!token) {
+            toast.error('Authentication required.');
+            if (showLoader) setIsLoading(false);
+            return;
+        }
+        try {
+            const response = await axios.get('/semester-with-subjects', {
+                params: { program_id: program.id, _ts: Date.now() },
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const apiSemesters: any[] = Array.isArray(response.data.semesters) ? response.data.semesters : [];
+            const programSemesters: { [key: string]: Semester } = {};
+            apiSemesters.forEach(apiSem => {
+                const key = `${apiSem.year_level}, ${apiSem.semester_level}`;
+                programSemesters[key] = {
+                    id: apiSem.id,
+                    subjects: (apiSem.subjects || []).map((sub: any): Subject => ({
+                        id: sub.id, code: sub.subject_code, name: sub.des_title,
+                        unitsTotal: sub.total_units, unitsLec: sub.lec_units, unitsLab: sub.lab_units,
+                        hoursTotal: sub.total_hrs, hoursLec: sub.total_lec_hrs, hoursLab: sub.total_lab_hrs,
+                        prerequisite: sub.pre_requisite || 'None'
+                    })),
+                    isActive: apiSem.status === 1,
+                    startDate: apiSem.start_date, endDate: apiSem.end_date
+                };
+            });
+            setSemesters(programSemesters);
+            semestersCacheStore[program.id] = { data: programSemesters, refreshKey };
+        } catch (error) {
+            toast.error('Failed to load semester data.');
+        } finally {
+            if (showLoader) setIsLoading(false);
+        }
+    }, [program.id, refreshKey]);
+
+    const handleRefreshData = async () => {
+        setIsRefreshing(true);
+        await fetchSemestersFromApi(true);
+        setIsRefreshing(false);
+    };
+
     useEffect(() => {
         if (!isOpen) return;
-        const fetchSemesters = async () => {
-            setIsLoading(true);
-            const token = localStorage.getItem('accessToken');
-            if (!token) { toast.error('Authentication required.'); setIsLoading(false); return; }
-            try {
-                const response = await axios.get('/semester-with-subjects', {
-                    params: { program_id: program.id, _ts: Date.now() },
-                    headers: { Authorization: `Bearer ${token}` }
-                });
-                const apiSemesters: any[] = Array.isArray(response.data.semesters) ? response.data.semesters : [];
-                const programSemesters: { [key: string]: Semester } = {};
-                apiSemesters.forEach(apiSem => {
-                    const key = `${apiSem.year_level}, ${apiSem.semester_level}`;
-                    programSemesters[key] = {
-                        id: apiSem.id,
-                        subjects: (apiSem.subjects || []).map((sub: any): Subject => ({
-                            id: sub.id, code: sub.subject_code, name: sub.des_title,
-                            unitsTotal: sub.total_units, unitsLec: sub.lec_units, unitsLab: sub.lab_units,
-                            hoursTotal: sub.total_hrs, hoursLec: sub.total_lec_hrs, hoursLab: sub.total_lab_hrs,
-                            prerequisite: sub.pre_requisite || 'None'
-                        })),
-                        isActive: apiSem.status === 1,
-                        startDate: apiSem.start_date, endDate: apiSem.end_date
-                    };
-                });
-                setSemesters(programSemesters);
-            } catch (error) { toast.error('Failed to load semester data.'); }
-            finally { setIsLoading(false); }
-        };
-        fetchSemesters();
-    }, [isOpen, program.id, refreshKey]);
+        const cached = semestersCacheStore[program.id];
+        const hasProgramSemesters = Object.keys(program.semesters || {}).length > 0;
+        const shouldForceRefresh = cached && cached.refreshKey !== refreshKey;
+
+        if (cached && !shouldForceRefresh) {
+            setSemesters(cached.data);
+            return;
+        }
+
+        const sourceSemesters = hasProgramSemesters ? program.semesters : {};
+        if (hasProgramSemesters && !shouldForceRefresh) {
+            setSemesters(sourceSemesters);
+            semestersCacheStore[program.id] = { data: sourceSemesters, refreshKey };
+            setIsLoading(false);
+            return;
+        }
+
+        fetchSemestersFromApi(true);
+    }, [isOpen, program.id, program.semesters, refreshKey, fetchSemestersFromApi]);
 
     useEffect(() => {
         if (updatedSubjectData) {
@@ -104,17 +139,22 @@ export function CurriculumDetailModal({
                     if (subjectIndex !== -1) targetSemester.subjects[subjectIndex] = subject;
                     else targetSemester.subjects.push(subject);
                 }
+                semestersCacheStore[program.id] = { data: newSemesters, refreshKey };
                 return newSemesters;
             });
         }
-    }, [updatedSubjectData]);
+    }, [program.id, refreshKey, updatedSubjectData]);
 
     useEffect(() => {
         if (newSemesterData) {
             const { name, semester } = newSemesterData;
-            setSemesters(prev => ({ ...prev, [name]: semester }));
+            setSemesters(prev => {
+                const next = { ...prev, [name]: semester };
+                semestersCacheStore[program.id] = { data: next, refreshKey };
+                return next;
+            });
         }
-    }, [newSemesterData]);
+    }, [newSemesterData, program.id, refreshKey]);
     
     useEffect(() => {
         if (updatedSemesterData) {
@@ -129,10 +169,11 @@ export function CurriculumDetailModal({
                 } else {
                     newSemesters[name] = { ...targetSemester, ...semester };
                 }
+                semestersCacheStore[program.id] = { data: newSemesters, refreshKey };
                 return newSemesters;
             });
         }
-    }, [updatedSemesterData]);
+    }, [program.id, refreshKey, updatedSemesterData]);
 
     const sortedSemesters = useMemo(() => {
         return Object.entries(semesters).sort(([keyA], [keyB]) => sortSemesterKeys(keyA, keyB));
@@ -145,7 +186,13 @@ export function CurriculumDetailModal({
                     <DialogTitle className="text-2xl md:text-3xl font-bold text-foreground flex items-center gap-3">{program.name}<span className="text-sm font-semibold text-primary bg-primary/10 px-3 py-1 rounded-full">{program.abbreviation}</span></DialogTitle>
                     <DialogDescription className="flex items-center gap-2"><CalendarDays className="h-4 w-4" />Academic Year of Effectivity: {program.effectiveYear}</DialogDescription>
                 </DialogHeader>
-                <div className="flex-grow overflow-y-auto px-6 py-4 space-y-8">
+                <div className="flex-grow overflow-y-auto px-6 py-2 space-y-6">
+                    <div className="flex justify-end">
+                        <Button type="button" variant="outline" size="sm" onClick={handleRefreshData} disabled={isRefreshing || isLoading}>
+                            <RefreshCw size={14} className={`mr-2 ${(isRefreshing || isLoading) ? 'animate-spin' : ''}`} />
+                            Refresh Data
+                        </Button>
+                    </div>
                     {isLoading ? ( <div className="space-y-6">{[1, 2].map(i => (<div key={i} className="bg-card border rounded-xl p-4 animate-pulse"><div className="h-6 bg-muted/60 rounded w-1/3 mb-4" /><div className="h-48 bg-muted/30 rounded" /></div>))}</div>) 
                     : sortedSemesters.length === 0 ? (<div className="text-center py-20 text-muted-foreground flex flex-col items-center justify-center h-full"><Layers size={56} className="mx-auto mb-4" /><h4 className="font-semibold text-xl text-foreground">No Semesters Found</h4><p className="max-w-md mx-auto mt-2 text-sm">This curriculum is empty.</p></div>) 
                     : (sortedSemesters.map(([semesterName, semesterData]) => (

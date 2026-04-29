@@ -185,6 +185,9 @@ function DeanDashboardContainer() {
   // Destructure data for cleaner use
   const { kpiData, weeklySchedule, facultyLoad } = dashboardData;
   const allClassesData = weeklySchedule.allClasses;
+  const weeklyTotalClasses = Object.values(weeklySchedule.weeklyOverview || {}).reduce((acc, val) => acc + Number(val || 0), 0);
+  const peakDayEntry = Object.entries(weeklySchedule.weeklyOverview || {}).sort((a, b) => Number(b[1]) - Number(a[1]))[0];
+  const peakDay = peakDayEntry ? `${peakDayEntry[0]} (${peakDayEntry[1]})` : "N/A";
 
   return (
     <div className="space-y-8">
@@ -222,6 +225,23 @@ function DeanDashboardContainer() {
           </div>
         </div>
       </motion.div>
+
+      <div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="rounded-xl border bg-white p-4">
+            <p className="text-xs text-slate-500">Weekly Classes</p>
+            <p className="text-2xl font-bold text-slate-900">{weeklyTotalClasses}</p>
+          </div>
+          <div className="rounded-xl border bg-white p-4">
+            <p className="text-xs text-slate-500">Peak Day</p>
+            <p className="text-2xl font-bold text-slate-900">{peakDay}</p>
+          </div>
+          <div className="rounded-xl border bg-white p-4">
+            <p className="text-xs text-slate-500">Faculty Tracked</p>
+            <p className="text-2xl font-bold text-slate-900">{facultyLoad.length}</p>
+          </div>
+        </div>
+      </div>
 
       {/* Main Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">

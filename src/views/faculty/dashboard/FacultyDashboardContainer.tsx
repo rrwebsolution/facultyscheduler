@@ -74,6 +74,23 @@ function FacultyDashboardContainer() {
     }));
   }, [myLoads]);
 
+  const weekLoadCount = myLoads.length;
+  const uniqueRooms = useMemo(() => new Set(myLoads.map((l: any) => l?.room?.roomNumber || '')).size, [myLoads]);
+  const nextClass = useMemo(() => {
+    const now = new Date();
+    const today = now.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
+    const upcomingToday = myLoads
+      .filter((l: any) => String(l?.day || '').toLowerCase() === today)
+      .sort((a: any, b: any) => String(a?.start_time || '').localeCompare(String(b?.start_time || '')));
+    const next = upcomingToday.find((l: any) => {
+      const [hh, mm] = String(l?.start_time || '00:00').split(':').map(Number);
+      const cmp = new Date(now);
+      cmp.setHours(hh || 0, mm || 0, 0, 0);
+      return cmp >= now;
+    });
+    return next ? `${next.subject?.subject_code || ''} ${formatTime(next.start_time || '')}`.trim() : 'No more class today';
+  }, [myLoads]);
+
   const handleRefresh = async () => {
     setIsRefreshing(true);
     await Promise.all([
@@ -135,6 +152,23 @@ function FacultyDashboardContainer() {
           totalSubjects={totalSubjects}
           totalPreparations={totalPreparations}
         />
+      </div>
+
+      <div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="rounded-xl border bg-white p-4">
+            <p className="text-xs text-slate-500">Weekly Assigned Classes</p>
+            <p className="text-2xl font-bold text-slate-900">{weekLoadCount}</p>
+          </div>
+          <div className="rounded-xl border bg-white p-4">
+            <p className="text-xs text-slate-500">Rooms Used</p>
+            <p className="text-2xl font-bold text-slate-900">{uniqueRooms}</p>
+          </div>
+          <div className="rounded-xl border bg-white p-4">
+            <p className="text-xs text-slate-500">Next Class</p>
+            <p className="text-sm md:text-base font-semibold text-slate-900">{nextClass}</p>
+          </div>
+        </div>
       </div>
 
       {/* Upcoming Schedule Section */}

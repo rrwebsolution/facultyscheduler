@@ -63,6 +63,10 @@ function DashboardContainer() {
     fetchData(true);
   };
 
+  const totalToday = data?.details?.length || 0;
+  const uniqueFacultyToday = new Set((data?.details || []).map((d) => d.faculty_name)).size;
+  const uniqueSectionsToday = new Set((data?.details || []).map((d) => d.section)).size;
+
   return (
     <>
       {/* Hero / Welcome Section - Minimalist & Clean */}
@@ -110,6 +114,23 @@ function DashboardContainer() {
       {/* Cards Section */}
       <div className="mb-8">
         <Cards counts={data?.counts} isLoading={loading} />
+      </div>
+
+      <div className="mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="rounded-xl border bg-white p-4">
+            <p className="text-xs text-slate-500">Today Classes</p>
+            <p className="text-2xl font-bold text-slate-900">{loading ? '--' : totalToday}</p>
+          </div>
+          <div className="rounded-xl border bg-white p-4">
+            <p className="text-xs text-slate-500">Faculty On Schedule</p>
+            <p className="text-2xl font-bold text-slate-900">{loading ? '--' : uniqueFacultyToday}</p>
+          </div>
+          <div className="rounded-xl border bg-white p-4">
+            <p className="text-xs text-slate-500">Sections Covered</p>
+            <p className="text-2xl font-bold text-slate-900">{loading ? '--' : uniqueSectionsToday}</p>
+          </div>
+        </div>
       </div>
 
       {/* Upcoming Schedules Section */}

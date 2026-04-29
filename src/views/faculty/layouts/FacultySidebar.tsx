@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { BookOpen, Calendar, Home, LogOut, X } from "lucide-react"; // Gidugang ang BarChart3
+import { BookOpen, Calendar, Home, LogOut, X, Loader2 } from "lucide-react"; // Gidugang ang BarChart3
 import { motion, AnimatePresence } from "framer-motion";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
@@ -17,6 +17,7 @@ function FacultySidebar({ isOpen, setIsOpen, isCollapsed }: SidebarProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   useEffect(() => {
     const checkScreenSize = () => setIsMobile(window.innerWidth < 768);
@@ -36,18 +37,22 @@ function FacultySidebar({ isOpen, setIsOpen, isCollapsed }: SidebarProps) {
   };
 
   const handleSidebarLogout = async () => {
+    if (isLoggingOut) return;
+    setIsLoggingOut(true);
     const token = localStorage.getItem('accessToken');
-    if (token) {
-        try {
-            await axios.post('/logout', {}, { headers: { 'Authorization': `Bearer ${token}` } });
-        } catch (error) {
-            console.error("Logout API call failed, but logging out locally.", error);
-        }
+    try {
+      if (token) {
+        await axios.post('/logout', {}, { headers: { 'Authorization': `Bearer ${token}` } });
+      }
+    } catch (error) {
+      console.error("Logout API call failed, but logging out locally.", error);
+    } finally {
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('user');
+      toast.success("You have been logged out.");
+      navigate('/user-login');
+      setIsLoggingOut(false);
     }
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('user');
-    toast.success("You have been logged out.");
-    navigate('/user-login');
   };
 
   useEffect(() => {
@@ -128,14 +133,14 @@ function FacultySidebar({ isOpen, setIsOpen, isCollapsed }: SidebarProps) {
           <div className="px-2 py-4 mt-auto border-t border-white/10 shrink-0">
             <Tooltip>
               <TooltipTrigger asChild>
-                <button onClick={handleSidebarLogout} className={`flex items-center gap-3 w-full p-3 rounded-lg text-gray-300 hover:bg-red-500/80 hover:text-white transition-all ${hideText ? 'justify-center' : ''}`}>
-                  <div className="shrink-0"><LogOut size={20} /></div>
+                <button onClick={handleSidebarLogout} disabled={isLoggingOut} className={`flex items-center gap-3 w-full p-3 rounded-lg text-gray-300 hover:bg-red-500/80 hover:text-white transition-all ${hideText ? 'justify-center' : ''} disabled:opacity-60 disabled:cursor-not-allowed`}>
+                  <div className="shrink-0">{isLoggingOut ? <Loader2 size={20} className="animate-spin" /> : <LogOut size={20} />}</div>
                   <AnimatePresence>
-                    {!hideText && <motion.span initial={{ opacity: 0, width: 0 }} animate={{ opacity: 1, width: 'auto', transition: { delay: 0.1 } }} exit={{ opacity: 0, width: 0 }} className="whitespace-nowrap overflow-hidden">Logout</motion.span>}
+                    {!hideText && <motion.span initial={{ opacity: 0, width: 0 }} animate={{ opacity: 1, width: 'auto', transition: { delay: 0.1 } }} exit={{ opacity: 0, width: 0 }} className="whitespace-nowrap overflow-hidden">{isLoggingOut ? 'Logging out...' : 'Logout'}</motion.span>}
                   </AnimatePresence>
                 </button>
               </TooltipTrigger>
-              {hideText && <TooltipContent side="right" className="bg-gray-800 text-white border-gray-700">Logout</TooltipContent>}
+              {hideText && <TooltipContent side="right" className="bg-gray-800 text-white border-gray-700">{isLoggingOut ? 'Logging out...' : 'Logout'}</TooltipContent>}
             </Tooltip>
           </div>
         </div>

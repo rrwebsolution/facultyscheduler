@@ -217,6 +217,20 @@ const routes = [
             <CourseContainer readOnly={true} />
           </Suspense>
       },
+      {
+        path: 'settings',
+        element:
+          <Suspense fallback={<Loader />}>
+            <SettingsContainer />
+          </Suspense>
+      },
+      {
+        path: 'profile',
+        element:
+          <Suspense fallback={<Loader />}>
+            <ProfileContainer />
+          </Suspense>
+      },
       
     ],
   },
@@ -263,6 +277,13 @@ const routes = [
         element: 
           <Suspense fallback={<Loader />}>
             <FacultyProfileContainer />
+          </Suspense>
+      },
+      {
+        path: 'settings',
+        element: 
+          <Suspense fallback={<Loader />}>
+            <SettingsContainer />
           </Suspense>
       },
     ],

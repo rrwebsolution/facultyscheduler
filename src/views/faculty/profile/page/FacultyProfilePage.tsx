@@ -1,4 +1,5 @@
 import { Mail, Phone, MapPin, Users, BookOpen, Clock, Edit, Megaphone } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 // Reusable component para sa stat card
 const StatCard = ({ icon, label, value, color }: { icon: React.ReactNode; label: string; value: string | number; color: string }) => (
@@ -39,8 +40,12 @@ const CourseItem = ({ code, title, schedule, color }: { code: string; title: str
 
 
 function FacultyProfilePage() {
+    const navigate = useNavigate();
     const facultyString = localStorage.getItem('user'); // Assuming user is the faculty
     const faculty = facultyString ? JSON.parse(facultyString) : { name: 'Dr. Evelyn Reed', email: 'e.reed@university.edu' };
+    const profileSrc = faculty?.profile_picture
+        ? `${(import.meta.env.VITE_URL || '').replace(/\/$/, '')}/${faculty.profile_picture}`
+        : `https://i.pravatar.cc/150?u=${faculty.email}`;
 
     return (
         <div className="max-w-7xl mx-auto space-y-8">
@@ -50,7 +55,7 @@ function FacultyProfilePage() {
                 <div className="p-6">
                     <div className="flex items-end -mt-20">
                         <img 
-                            src={`https://i.pravatar.cc/150?u=${faculty.email}`} 
+                            src={profileSrc} 
                             alt="Faculty Profile"
                             className="w-32 h-32 rounded-full object-cover border-4 border-white shadow-md"
                         />
@@ -58,7 +63,7 @@ function FacultyProfilePage() {
                             <h1 className="text-3xl font-bold text-slate-800">{faculty.name}</h1>
                             <p className="text-slate-500 font-medium">Associate Professor, College of Information Technology</p>
                         </div>
-                        <button className="ml-auto px-5 py-2.5 bg-slate-700 text-white font-semibold rounded-lg shadow-md hover:bg-slate-800 transition flex items-center gap-2">
+                        <button onClick={() => navigate('/faculty/settings')} className="ml-auto px-5 py-2.5 bg-slate-700 text-white font-semibold rounded-lg shadow-md hover:bg-slate-800 transition flex items-center gap-2">
                            <Edit size={16} /> Edit Profile
                         </button>
                     </div>

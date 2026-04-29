@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Loader2, Trash2, PlusCircle, ServerCrash } from "lucide-react";
 import { toast } from "sonner";
 import axios from "../../../../plugin/axios"; // Adjust path as necessary
@@ -36,6 +36,7 @@ export function ManageAvailabilityModal({ isOpen, onClose, room }: Props) {
   const [availabilities, setAvailabilities] = useState<AvailabilitySlot[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [showAllSlots, setShowAllSlots] = useState(false);
 
   // Ang input sa form magpabilin nga 24-hour format (mas sayon i-handle)
   const defaultNewSlot = { day: "", start_time: "00:00", end_time: "00:00" };
@@ -45,6 +46,7 @@ export function ManageAvailabilityModal({ isOpen, onClose, room }: Props) {
     const fetchAvailabilities = async () => {
       if (isOpen && room) {
         setIsLoading(true);
+        setShowAllSlots(false);
         try {
           const token = localStorage.getItem('accessToken');
           if (!token) { toast.error("Authentication required."); return; }
@@ -134,9 +136,11 @@ export function ManageAvailabilityModal({ isOpen, onClose, room }: Props) {
     }
   };
 
+  const visibleAvailabilities = showAllSlots ? availabilities : availabilities.slice(0, 5);
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-2xl">
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
         <DialogHeader>
           <DialogTitle>Manage Availability for {room?.roomNumber}</DialogTitle>
           <DialogDescription>
@@ -144,10 +148,10 @@ export function ManageAvailabilityModal({ isOpen, onClose, room }: Props) {
           </DialogDescription>
         </DialogHeader>
         
-        <div className="py-4 space-y-6">
+        <div className="py-4 space-y-6 overflow-y-auto min-h-0 pr-1">
             <div>
                 <h3 className="font-semibold mb-2">Existing Slots</h3>
-                <div className="border rounded-lg max-h-64 overflow-y-auto">
+                <div className="border rounded-lg">
                     {isLoading ? (
                         <div className="flex items-center justify-center h-24 text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin" />Fetching data...</div>
                     ) : availabilities.length > 0 ? (
@@ -161,7 +165,7 @@ export function ManageAvailabilityModal({ isOpen, onClose, room }: Props) {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {availabilities.map(slot => (
+                                {visibleAvailabilities.map(slot => (
                                     <TableRow key={slot.id}>
                                         <TableCell>{slot.day}</TableCell>
                                         <TableCell>{formatTimeTo12Hour(slot.start_time)}</TableCell>
@@ -174,6 +178,28 @@ export function ManageAvailabilityModal({ isOpen, onClose, room }: Props) {
                                     </TableRow>
                                 ))}
                             </TableBody>
+                            {availabilities.length > 5 && (
+                                <TableFooter>
+                                    <TableRow>
+                                        <TableCell colSpan={4} className="text-center">
+                                            <span
+                                                role="button"
+                                                tabIndex={0}
+                                                className="text-sm font-medium text-primary cursor-pointer hover:underline"
+                                                onClick={() => setShowAllSlots(prev => !prev)}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter' || e.key === ' ') {
+                                                        e.preventDefault();
+                                                        setShowAllSlots(prev => !prev);
+                                                    }
+                                                }}
+                                            >
+                                                {showAllSlots ? 'Show less slots' : `See more slots (${availabilities.length - 5} more)`}
+                                            </span>
+                                        </TableCell>
+                                    </TableRow>
+                                </TableFooter>
+                            )}
                         </Table>
                     ) : (
                         <div className="flex flex-col items-center justify-center h-24 text-muted-foreground">

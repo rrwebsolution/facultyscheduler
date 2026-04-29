@@ -1,4 +1,7 @@
-import { User, Mail, Phone, MapPin, Users, BookOpen, Building2, Edit, CheckCircle, Calendar } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { User, Mail, Phone, MapPin, Users, BookOpen, Building2, Edit } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import axios from '../../../../plugin/axios';
 
 // Reusable component para sa stat card
 const StatCard = ({ icon, label, value, color }: { icon: React.ReactNode; label: string; value: string | number; color: string }) => (
@@ -28,8 +31,53 @@ const InfoItem = ({ icon, label, value }: { icon: React.ReactNode; label: string
 
 
 function ProfilePage() {
+    const navigate = useNavigate();
     const userString = localStorage.getItem('user');
     const user = userString ? JSON.parse(userString) : { name: 'Admin', email: 'admin@facultyscheduler.com' };
+    const [isLoading, setIsLoading] = useState(true);
+    const [facultiesManaged, setFacultiesManaged] = useState(0);
+    const [totalCourses, setTotalCourses] = useState(0);
+    const [roomsAvailable, setRoomsAvailable] = useState(0);
+    const profileSrc = user?.profile_picture
+        ? `${(import.meta.env.VITE_URL || '').replace(/\/$/, '')}/${user.profile_picture}`
+        : `https://i.pravatar.cc/150?u=${user.email}`;
+    const contactPhone = user?.phone || user?.contact_number || 'Not set';
+    const contactLocation = user?.location || user?.address || 'Not set';
+
+    useEffect(() => {
+        const fetchProfileStats = async () => {
+            const token = localStorage.getItem('accessToken');
+            if (!token) {
+                setIsLoading(false);
+                return;
+            }
+
+            try {
+                const [facultiesRes, subjectsRes, roomsRes] = await Promise.all([
+                    axios.get('/faculties', { headers: { Authorization: `Bearer ${token}` } }),
+                    axios.get('/get-subjects', { headers: { Authorization: `Bearer ${token}` } }),
+                    axios.get('/rooms', { headers: { Authorization: `Bearer ${token}` } }),
+                ]);
+
+                const activeFaculties = facultiesRes?.data?.faculties || [];
+                const subjects = subjectsRes?.data?.subject || [];
+                const rooms = roomsRes?.data?.rooms || [];
+
+                setFacultiesManaged(Array.isArray(activeFaculties) ? activeFaculties.length : 0);
+                setTotalCourses(Array.isArray(subjects) ? subjects.length : 0);
+                setRoomsAvailable(Array.isArray(rooms) ? rooms.length : 0);
+            } catch (error) {
+                // Keep UI usable with fallback zero values.
+                setFacultiesManaged(0);
+                setTotalCourses(0);
+                setRoomsAvailable(0);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchProfileStats();
+    }, []);
 
     return (
         <div className="max-w-7xl mx-auto space-y-8">
@@ -39,7 +87,7 @@ function ProfilePage() {
                 <div className="p-6">
                     <div className="flex items-end -mt-20">
                         <img 
-                            src={`https://i.pravatar.cc/150?u=${user.email}`} 
+                            src={profileSrc} 
                             alt="Admin Profile"
                             className="w-32 h-32 rounded-full object-cover border-4 border-white shadow-md"
                         />
@@ -47,7 +95,7 @@ function ProfilePage() {
                             <h1 className="text-3xl font-bold text-slate-800">{user.name}</h1>
                             <p className="text-slate-500 font-medium">Administrator</p>
                         </div>
-                        <button className="ml-auto px-5 py-2.5 bg-primary text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700 transition flex items-center gap-2">
+                        <button onClick={() => navigate('../settings')} className="ml-auto px-5 py-2.5 bg-primary text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700 transition flex items-center gap-2">
                            <Edit size={16} /> Edit Profile
                         </button>
                     </div>
@@ -56,9 +104,9 @@ function ProfilePage() {
             
             {/* --- Stats Grid --- */}
             <div className="grid grid-cols-3 md:grid-cols-1 gap-6">
-                <StatCard icon={<Users size={28} className="text-white"/>} label="Faculties Managed" value={45} color="bg-sky-500" />
-                <StatCard icon={<BookOpen size={28} className="text-white"/>} label="Total Courses" value={120} color="bg-emerald-500" />
-                <StatCard icon={<Building2 size={28} className="text-white"/>} label="Rooms Available" value={32} color="bg-amber-500" />
+                <StatCard icon={<Users size={28} className="text-white"/>} label="Faculties Managed" value={isLoading ? '--' : facultiesManaged} color="bg-sky-500" />
+                <StatCard icon={<BookOpen size={28} className="text-white"/>} label="Total Courses" value={isLoading ? '--' : totalCourses} color="bg-emerald-500" />
+                <StatCard icon={<Building2 size={28} className="text-white"/>} label="Rooms Available" value={isLoading ? '--' : roomsAvailable} color="bg-amber-500" />
             </div>
 
             <div className="grid grid-cols-1 gap-8">
@@ -75,41 +123,10 @@ function ProfilePage() {
                         <div className="space-y-4">
                             <InfoItem icon={<User size={20} />} label="Full Name" value={user.name} />
                             <InfoItem icon={<Mail size={20} />} label="Email Address" value={user.email} />
-                            <InfoItem icon={<Phone size={20} />} label="Phone" value="+1 (555) 123-4567" />
-                            <InfoItem icon={<MapPin size={20} />} label="Location" value="Main Admin Office" />
+                            <InfoItem icon={<Phone size={20} />} label="Phone" value={contactPhone} />
+                            <InfoItem icon={<MapPin size={20} />} label="Location" value={contactLocation} />
                         </div>
                      </div>
-                </div>
-
-                {/* --- Right Column: Activity Timeline --- */}
-                <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-lg border border-slate-200/80">
-                    <h3 className="text-xl font-bold text-slate-800 mb-5">Recent Activity</h3>
-                    <ol className="relative border-l border-slate-200 space-y-8">                  
-                        <li className="ml-6">            
-                            <span className="absolute flex items-center justify-center w-6 h-6 bg-emerald-200 rounded-full -left-3 ring-4 ring-white">
-                                <Users size={14} className="text-emerald-700"/>
-                            </span>
-                            <h4 className="flex items-center mb-1 text-md font-semibold text-slate-900">Added New Faculty</h4>
-                            <time className="block mb-2 text-xs font-normal leading-none text-slate-400">2 days ago</time>
-                            <p className="text-sm text-slate-600">Successfully added Dr. Aliyah Khan to the system.</p>
-                        </li>
-                        <li className="ml-6">
-                            <span className="absolute flex items-center justify-center w-6 h-6 bg-sky-200 rounded-full -left-3 ring-4 ring-white">
-                                <Calendar size={14} className="text-sky-700"/>
-                            </span>
-                            <h4 className="flex items-center mb-1 text-md font-semibold text-slate-900">Generated Semester Schedule</h4>
-                            <time className="block mb-2 text-xs font-normal leading-none text-slate-400">5 days ago</time>
-                            <p className="text-sm text-slate-600">Generated and published the master schedule for Fall 2025.</p>
-                        </li>
-                         <li className="ml-6">
-                            <span className="absolute flex items-center justify-center w-6 h-6 bg-indigo-200 rounded-full -left-3 ring-4 ring-white">
-                                <CheckCircle size={14} className="text-indigo-700"/>
-                            </span>
-                            <h4 className="flex items-center mb-1 text-md font-semibold text-slate-900">System Update Completed</h4>
-                            <time className="block mb-2 text-xs font-normal leading-none text-slate-400">Last week</time>
-                            <p className="text-sm text-slate-600">Updated the system to version 2.1.0.</p>
-                        </li>
-                    </ol>
                 </div>
             </div>
         </div>

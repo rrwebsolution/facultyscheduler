@@ -77,14 +77,21 @@ export function RoomFormModal({ isOpen, onClose, onSave, initialData }: RoomForm
         <form onSubmit={handleSubmit} className="py-4 space-y-4">
           <div className="space-y-2">
             <Label htmlFor="roomNumber" className="text-right">Room Number / Name</Label>
-            <Input id="roomNumber" name="roomNumber" value={formData.roomNumber} onChange={handleChange} required />
+            <Input
+              id="roomNumber"
+              name="roomNumber"
+              placeholder="e.g. Room 101 or Lab A"
+              value={formData.roomNumber}
+              onChange={handleChange}
+              required
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="type">Type</Label>
               <Select value={formData.type} onValueChange={handleSelectChange}>
-                <SelectTrigger id="type"><SelectValue /></SelectTrigger>
+                <SelectTrigger id="type"><SelectValue placeholder="Select room type" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="Lecture">Lecture</SelectItem>
                   <SelectItem value="Laboratory">Laboratory</SelectItem>
@@ -98,6 +105,7 @@ export function RoomFormModal({ isOpen, onClose, onSave, initialData }: RoomForm
                 name="capacity"
                 type="number"
                 min="1"
+                placeholder="e.g. 40"
                 value={formData.capacity ?? ''}
                 onChange={handleChange}
               />
