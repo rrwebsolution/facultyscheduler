@@ -97,24 +97,32 @@ const routes = [
   {
     path: 'user-login',
     element: (
-      <Suspense fallback={<Loader />}>
-        <Login />
-      </Suspense>
+      <RedirectIfAuthenticated>
+        <Suspense fallback={<Loader />}>
+          <Login />
+        </Suspense>
+      </RedirectIfAuthenticated>
     ),
   },
   {
     path: 'forgot-password',
     element: (
-      <Suspense fallback={<Loader />}>
-        <ForgotPassword  />
-      </Suspense>
+      <RedirectIfAuthenticated>
+        <Suspense fallback={<Loader />}>
+          <ForgotPassword  />
+        </Suspense>
+      </RedirectIfAuthenticated>
     ),
   },
 
   // Admin
   {
     path: 'admin',
-    element: <AdminContainerLayouts />,
+    element: (
+      <RequireAuth>
+        <AdminContainerLayouts />
+      </RequireAuth>
+    ),
     children: [
       {
         path: '',
@@ -183,7 +191,11 @@ const routes = [
   // Dean Department
   {
     path: 'dean',
-    element: <DeparmentContainerLayouts />,
+    element: (
+      <RequireAuth>
+        <DeparmentContainerLayouts />
+      </RequireAuth>
+    ),
     children: [
       {
         path: '',
@@ -238,7 +250,11 @@ const routes = [
   // Faculty
   {
     path: 'faculty',
-    element: <FacultyContainerLayouts />,
+    element: (
+      <RequireAuth>
+        <FacultyContainerLayouts />
+      </RequireAuth>
+    ),
     children: [
       {
         path: '',
@@ -307,6 +323,32 @@ function RedirectFrom404() {
     return <Navigate to={saved} replace />;
   }
   return <Navigate to="/user-login" replace />;
+}
+
+function RequireAuth({ children }: { children: JSX.Element }) {
+  const token = localStorage.getItem('accessToken');
+  if (!token) {
+    return <Navigate to="/user-login" replace />;
+  }
+  return children;
+}
+
+function RedirectIfAuthenticated({ children }: { children: JSX.Element }) {
+  const token = localStorage.getItem('accessToken');
+  if (!token) return children;
+
+  const rawUser = localStorage.getItem('user');
+  let role: number | null = null;
+  try {
+    const parsed = rawUser ? JSON.parse(rawUser) : null;
+    role = typeof parsed?.role === 'number' ? parsed.role : null;
+  } catch {
+    role = null;
+  }
+
+  if (role === 1) return <Navigate to="/dean/user-dashboard" replace />;
+  if (role === 2) return <Navigate to="/faculty/user-dashboard" replace />;
+  return <Navigate to="/admin/user-dashboard" replace />;
 }
 
 // Simulate delay function

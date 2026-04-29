@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Info, Search, RefreshCw, Users, Sparkles } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { fetchFaculties as fetchFacultiesAction, fetchSubjects as fetchSubjectsAction } from '@/store/slices/dataCacheSlice';
@@ -14,6 +15,7 @@ import type { Faculty, Subject } from './type';
 
 function MainFacultyLoading() {
     const dispatch = useAppDispatch();
+    const navigate = useNavigate();
     const faculties = useAppSelector((state) => state.dataCache.faculties) as Faculty[];
     const allSubjects = useAppSelector((state) => state.dataCache.subjects) as Subject[];
     const facultiesStatus = useAppSelector((state) => state.dataCache.facultiesStatus);
@@ -37,6 +39,7 @@ function MainFacultyLoading() {
                 const token = localStorage.getItem('accessToken');
                 if (!token) {
                     toast.error('You must be logged in.');
+                    navigate('/user-login', { replace: true });
                     return;
                 }
                 const tasks: Promise<unknown>[] =[];
@@ -46,11 +49,17 @@ function MainFacultyLoading() {
 
             } catch (error) {
                 console.error("Error fetching data:", error);
+                const message = (error as any)?.response?.data?.message || (error as Error)?.message || '';
+                if (String(message).toLowerCase().includes('authentication required')) {
+                    toast.error('Authentication required.');
+                    navigate('/user-login', { replace: true });
+                    return;
+                }
                 toast.error('Failed to retrieve data from the server.');
             }
         };
         fetchInitialData();
-    }, [dispatch, facultiesStatus, subjectsStatus]);
+    }, [dispatch, facultiesStatus, subjectsStatus, navigate]);
 
     const isLoading = facultiesStatus === 'loading' || subjectsStatus === 'loading' || (facultiesStatus === 'idle' && subjectsStatus === 'idle');
     const isBusy = isLoading || isRefreshing;

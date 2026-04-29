@@ -7,7 +7,7 @@ import React, { useState } from 'react';
 import { Facebook, Instagram, Lock, LogInIcon, Mail, Twitter, Eye, EyeOff } from 'lucide-react';
 import axios from '../../plugin/axios';
 import { isAxiosError } from 'axios';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 
@@ -49,7 +49,6 @@ const Login: React.FC = () => {
             localStorage.setItem('accessToken', data.token);
             localStorage.setItem('user', JSON.stringify(data.user));
 
-            console.log('Login successful:', data);
             toast.success('Login successful 🎉', {
                 description: isFirstTime
                     ? `Welcome, ${data.user.name}!`
@@ -59,19 +58,19 @@ const Login: React.FC = () => {
             setErrors({});
 
             // Role-based redirection
-                switch(data.user.role) {
-                    case 0:
-                        navigate('/admin/user-dashboard');
-                        break;
-                    case 1:
-                        navigate('/dean/user-dashboard');
-                        break;
-                    case 2:
-                        navigate('/faculty/user-dashboard');
-                        break;
-                    default:
-                        navigate('/admin/user-dashboard');
-                }
+            switch(data.user.role) {
+                case 0:
+                    navigate('/admin/user-dashboard', { replace: true });
+                    break;
+                case 1:
+                    navigate('/dean/user-dashboard', { replace: true });
+                    break;
+                case 2:
+                    navigate('/faculty/user-dashboard', { replace: true });
+                    break;
+                default:
+                    navigate('/admin/user-dashboard', { replace: true });
+            }
         } catch (error: unknown) {
             console.error('Login error:', error);
             if (isAxiosError(error)) {
@@ -79,8 +78,7 @@ const Login: React.FC = () => {
                 if (error.response?.status === 401) {
                     toast.error(errorMessage || 'Invalid credentials 😓');
                     setErrors(prevErrors => ({
-                        ...prevErrors,
-                        [errorMessage?.toLowerCase().includes('email') ? 'email' : 'password']: errorMessage
+                        ...prevErrors,[errorMessage?.toLowerCase().includes('email') ? 'email' : 'password']: errorMessage
                     }));
                 } else {
                     toast.error('Login failed. Please try again later 😓');
@@ -94,123 +92,141 @@ const Login: React.FC = () => {
     };
 
     return (
-        <div className="flex flex-col md:p-10 items-center justify-center min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black px-4">
+        <div className="relative flex flex-col items-center justify-center min-h-screen bg-[#0a0a0a] px-4 overflow-hidden">
+            {/* Immersive Background Blur Effects */}
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-violet-600/20 rounded-[100%] blur-[120px] pointer-events-none" />
+            <div className="absolute bottom-0 right-0 w-[600px] h-[600px] bg-fuchsia-600/10 rounded-[100%] blur-[100px] pointer-events-none" />
+
             <motion.div
-                initial={{ opacity: 0, y: -50 }}
+                initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-                className="w-full max-w-md"
+                transition={{ duration: 0.6, ease: "easeOut" }}
+                className="w-full max-w-[420px] z-10"
             >
-                <Card className="relative w-full p-8 md:p-2 rounded-3xl bg-white/10 border border-white/20 shadow-2xl backdrop-blur-lg">
-                    <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-violet-500/20 to-fuchsia-500/20 opacity-50 animate-pulse pointer-events-none"></div>
-                    <CardHeader className="flex flex-col items-center space-y-3 text-white z-10">
+                <Card className="relative w-full rounded-[2rem] bg-white/[0.03] border border-white/[0.08] shadow-2xl backdrop-blur-2xl overflow-hidden p-6 sm:p-8">
+                    {/* Subtle top glare effect */}
+                    <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+
+                    <CardHeader className="flex flex-col items-center space-y-4 text-white p-0 mb-8">
                         <motion.div
-                            whileHover={{ scale: 1.1, rotate: 10 }}
-                            className="relative flex items-center justify-center w-24 h-24 bg-gradient-to-tr from-violet-700 to-fuchsia-500 rounded-full shadow-xl"
+                            whileHover={{ scale: 1.05, rotate: 5 }}
+                            transition={{ type: "spring", stiffness: 300 }}
+                            className="relative flex items-center justify-center w-20 h-20 bg-gradient-to-tr from-violet-600 to-fuchsia-500 rounded-2xl shadow-[0_0_40px_rgba(139,92,246,0.4)]"
                         >
-                            <div className="absolute inset-0 animate-ping rounded-full bg-gradient-to-tr from-violet-700 to-fuchsia-500 opacity-50 blur-md"></div>
-                            <span className="relative text-5xl font-bold text-white">FS</span>
+                            <span className="text-4xl font-black text-white tracking-tighter">FS</span>
                         </motion.div>
-                        <h2 className="text-4xl md:text-xl font-extrabold">Welcome Back</h2>
-                        <p className="text-md text-purple-200">Sign in to continue</p>
+                        <div className="text-center space-y-1">
+                            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">Welcome Back</h2>
+                            <p className="text-sm font-medium text-white/50">Enter your credentials to continue</p>
+                        </div>
                     </CardHeader>
 
-                    <CardContent className="z-10">
-                        <form className="space-y-8" onSubmit={handleLogin}>
-                            <div className="relative">
-                                <Mail className="absolute top-7 left-3 transform -translate-y-1/2 text-purple-400" size={22} />
-                                <Input
-                                    type="email"
-                                    value={email}
-                                    onChange={(e) => {
-                                        const value = e.target.value;
-                                        setEmail(value);
-                                        setErrors(prev => ({ ...prev, email: value.trim() ? undefined : 'Email is required' }));
-                                    }}
-                                    placeholder="Enter your email"
-                                    className={`pl-12 py-3 h-14 text-base rounded-lg bg-white shadow-inner focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500 text-black placeholder-white transition-all duration-300 ${errors.email ? 'border-red-500' : 'border-white/30'
-                                        }`}
-                                />
+                    <CardContent className="p-0">
+                        <form className="space-y-5" onSubmit={handleLogin}>
+                            
+                            {/* --- EMAIL FIELD --- */}
+                            <div className="space-y-1.5">
+                                <label className="text-sm font-medium text-white/70 ml-1">Email Address</label>
+                                <div className="relative group">
+                                    <Mail className="absolute top-1/2 left-4 transform -translate-y-1/2 text-white/40 group-focus-within:text-fuchsia-400 transition-colors" size={20} />
+                                    <Input
+                                        type="email"
+                                        value={email}
+                                        onChange={(e) => {
+                                            const value = e.target.value;
+                                            setEmail(value);
+                                            setErrors(prev => ({ ...prev, email: value.trim() ? undefined : 'Email is required' }));
+                                        }}
+                                        placeholder="juandelacruz@example.com"
+                                        className={`pl-11 h-14 text-base rounded-xl bg-black/20 border-white/10 text-white placeholder:text-white/20 hover:bg-black/30 focus:bg-black/40 focus:ring-2 focus:ring-fuchsia-500/50 focus:border-fuchsia-500 transition-all duration-300 ${errors.email ? 'border-red-500/50 focus:border-red-500 focus:ring-red-500/50' : ''}`}
+                                    />
+                                </div>
                                 {errors.email && (
-                                    <span className="text-sm text-red-400 mt-2 block">{errors.email}</span>
+                                    <motion.span initial={{ opacity: 0, x: -5 }} animate={{ opacity: 1, x: 0 }} className="text-[13px] font-medium text-red-400 ml-1 block">
+                                        {errors.email}
+                                    </motion.span>
                                 )}
                             </div>
 
-                            <div className="relative">
-                                <Lock className="absolute top-7 left-3 transform -translate-y-1/2 text-purple-400" size={22} />
-                                <Input
-                                    type={showPassword ? "text" : "password"}
-                                    value={password}
-                                    onChange={(e) => {
-                                        const value = e.target.value;
-                                        setPassword(value);
-                                        setErrors(prev => ({ ...prev, password: value.trim() ? undefined : 'Password is required' }));
-                                    }}
-                                    placeholder="Enter your password"
-                                    className={`pl-12 pr-12 py-3 h-14 text-base rounded-lg bg-white shadow-inner focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500 text-black placeholder-gray-400 transition-all duration-300 ${errors.password ? 'border-red-500' : 'border-white/30'
-                                        }`}
-                                />
-                                <button
-                                    type="button"
-                                    tabIndex={-1}
-                                    className="absolute top-7 right-3 transform -translate-y-1/2 text-purple-400 hover:text-fuchsia-400 focus:outline-none transition-colors duration-300"
-                                    onClick={() => setShowPassword((prev) => !prev)}
-                                    aria-label={showPassword ? "Hide password" : "Show password"}
-                                >
-                                    {showPassword ? <EyeOff size={22} /> : <Eye size={22} />}
-                                </button>
+                            {/* --- PASSWORD FIELD --- */}
+                            <div className="space-y-1.5">
+                                <label className="text-sm font-medium text-white/70 ml-1">Password</label>
+                                <div className="relative group">
+                                    <Lock className="absolute top-1/2 left-4 transform -translate-y-1/2 text-white/40 group-focus-within:text-fuchsia-400 transition-colors" size={20} />
+                                    <Input
+                                        type={showPassword ? "text" : "password"}
+                                        value={password}
+                                        onChange={(e) => {
+                                            const value = e.target.value;
+                                            setPassword(value);
+                                            setErrors(prev => ({ ...prev, password: value.trim() ? undefined : 'Password is required' }));
+                                        }}
+                                        placeholder="Enter your password"
+                                        className={`pl-11 pr-12 h-14 text-base rounded-xl bg-black/20 border-white/10 text-white placeholder:text-white/20 hover:bg-black/30 focus:bg-black/40 focus:ring-2 focus:ring-fuchsia-500/50 focus:border-fuchsia-500 transition-all duration-300 ${errors.password ? 'border-red-500/50 focus:border-red-500 focus:ring-red-500/50' : ''}`}
+                                    />
+                                    <button
+                                        type="button"
+                                        tabIndex={-1}
+                                        className="absolute top-1/2 right-4 transform -translate-y-1/2 text-white/40 hover:text-white transition-colors duration-300 outline-none"
+                                        onClick={() => setShowPassword((prev) => !prev)}
+                                        aria-label={showPassword ? "Hide password" : "Show password"}
+                                    >
+                                        {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                                    </button>
+                                </div>
                                 {errors.password && (
-                                    <span className="text-sm text-red-400 mt-2 block">{errors.password}</span>
+                                    <motion.span initial={{ opacity: 0, x: -5 }} animate={{ opacity: 1, x: 0 }} className="text-[13px] font-medium text-red-400 ml-1 block">
+                                        {errors.password}
+                                    </motion.span>
                                 )}
                             </div>
 
-                            <Button
-                                type="submit"
-                                className="w-full py-4 text-lg font-semibold text-white bg-gradient-to-r from-violet-600 to-fuchsia-500 hover:from-violet-700 hover:to-fuchsia-600 rounded-lg shadow-lg transform hover:scale-105 transition-all duration-300"
-                                disabled={loading}
-                            >
-                                {loading ? (
-                                    <div className="flex items-center justify-center">
-                                        <span className="animate-spin border-2 border-white border-t-transparent rounded-full w-5 h-5 mr-3" />
-                                        <span>Logging in...</span>
-                                    </div>
-                                ) : (
-                                    <div className="flex items-center justify-center space-x-2">
-                                        <LogInIcon />
-                                        <span>Login</span>
-                                    </div>
-                                )}
-                            </Button>
+                            {/* --- LOGIN BUTTON --- */}
+                            <div className="pt-2">
+                                <Button
+                                    type="submit"
+                                    className="w-full h-14 text-[15px] font-bold text-white bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 rounded-xl shadow-[0_4px_14px_0_rgba(168,85,247,0.39)] hover:shadow-[0_6px_20px_rgba(168,85,247,0.23)] border-0 transform transition-all duration-300"
+                                    disabled={loading}
+                                >
+                                    {loading ? (
+                                        <div className="flex items-center justify-center space-x-2">
+                                            <span className="animate-spin border-2 border-white/30 border-t-white rounded-full w-5 h-5" />
+                                            <span>Authenticating...</span>
+                                        </div>
+                                    ) : (
+                                        <div className="flex items-center justify-center space-x-2">
+                                            <span>Secure Login</span>
+                                            <LogInIcon size={18} />
+                                        </div>
+                                    )}
+                                </Button>
+                            </div>
                         </form>
-                        <div className="flex justify-end mt-2 z-10">
-                            <Link
-                                to="/forgot-password"
-                                className="text-sm text-purple-300 hover:underline hover:text-fuchsia-300 transition-colors duration-300 cursor-pointer font-semibold"
-                            >
-                                Forgot password?
-                            </Link>
-                        </div>
                     </CardContent>
                 </Card>
             </motion.div>
 
-            <p className="mt-8 text-md text-white/70">Developed by: RR Web Solution</p>
-
-            <div className="flex space-x-6 mt-6">
-                {[
-                    { icon: <Facebook size={24} className="text-white" />, href: '#' },
-                    { icon: <Instagram size={24} className="text-white" />, href: '#' },
-                    { icon: <Twitter size={24} className="text-white" />, href: '#' },
-                ].map(({ icon, href }, index) => (
-                    <motion.a
-                        key={index}
-                        href={href}
-                        whileHover={{ scale: 1.2, y: -5 }}
-                        className="p-3 rounded-full bg-white/20 backdrop-blur-md hover:bg-fuchsia-500/70 transition-all shadow-lg"
-                    >
-                        {icon}
-                    </motion.a>
-                ))}
+            {/* --- FOOTER --- */}
+            <div className="mt-10 flex flex-col items-center z-10 space-y-6">
+                <div className="flex items-center space-x-4">
+                    {[
+                        { icon: <Facebook size={18} className="text-white" />, href: '#' },
+                        { icon: <Instagram size={18} className="text-white" />, href: '#' },
+                        { icon: <Twitter size={18} className="text-white" />, href: '#' },
+                    ].map(({ icon, href }, index) => (
+                        <motion.a
+                            key={index}
+                            href={href}
+                            whileHover={{ scale: 1.1, y: -2 }}
+                            className="flex items-center justify-center w-10 h-10 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all duration-300"
+                        >
+                            {icon}
+                        </motion.a>
+                    ))}
+                </div>
+                <p className="text-xs font-medium text-white/40 tracking-wider uppercase">
+                    Developed by: RR Web Solution
+                </p>
             </div>
         </div>
     );
