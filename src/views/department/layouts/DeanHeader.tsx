@@ -32,8 +32,11 @@ const DeanHeader = ({ isSidebarOpen, setIsSidebarOpen, isSidebarCollapsed, setIs
 
   const userString = localStorage.getItem('user');
   const user = userString ? JSON.parse(userString) : { name: 'Dean', email: 'dean@example.com' };
+  const baseUrl = (import.meta.env.VITE_URL || '').replace(/\/$/, '');
   const profileSrc = user?.profile_picture
-    ? `${(import.meta.env.VITE_URL || '').replace(/\/$/, '')}/${user.profile_picture}`
+    ? user.profile_picture.startsWith('http')
+      ? user.profile_picture
+      : `${baseUrl}/${String(user.profile_picture).replace(/^\/+/, '')}`
     : `https://i.pravatar.cc/150?u=${user.email}`;
 
   useEffect(() => {
