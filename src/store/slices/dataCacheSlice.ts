@@ -1,6 +1,7 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import axios from "@/plugin/axios";
 import type { RootState } from "@/store/store";
+import type { ScheduleEntry } from "@/views/admin/room/classroom";
 
 type FetchStatus = "idle" | "loading" | "succeeded" | "failed";
 
@@ -22,6 +23,11 @@ interface DataCacheState {
   subjects: any[];
   rooms: any[];
   facultyLoading: any[];
+  filteredSchedules: ScheduleEntry[];
+  scheduleCacheByKey: Record<string, ScheduleEntry[]>;
+  scheduleStatusByKey: Record<string, FetchStatus>;
+  selectedScheduleFilter: { year: number | null; section: string | null; programId: number | null };
+  selectedScheduleKey: string | null;
   facultiesStatus: FetchStatus;
   subjectsStatus: FetchStatus;
   roomsStatus: FetchStatus;
@@ -34,12 +40,20 @@ const initialState: DataCacheState = {
   subjects: [],
   rooms: [],
   facultyLoading: [],
+  filteredSchedules: [],
+  scheduleCacheByKey: {},
+  scheduleStatusByKey: {},
+  selectedScheduleFilter: { year: null, section: null, programId: null },
+  selectedScheduleKey: null,
   facultiesStatus: "idle",
   subjectsStatus: "idle",
   roomsStatus: "idle",
   facultyLoadingStatus: "idle",
   error: null,
 };
+
+const makeScheduleKey = (year: number | null, section: string | null, programId: number | null) =>
+  `${programId ?? "none"}|${year ?? "none"}|${(section || "").trim() || "all"}`;
 
 const authHeader = () => {
   const token = localStorage.getItem("accessToken");
@@ -118,10 +132,84 @@ export const fetchFacultyLoading = createAsyncThunk("dataCache/fetchFacultyLoadi
   },
 });
 
+export const fetchFilteredSchedules = createAsyncThunk(
+  "dataCache/fetchFilteredSchedules",
+  async (
+    args: { year: number | null; section: string | null; programId: number | null; forceRefresh?: boolean },
+    _thunkApi
+  ) => {
+    const { year, section, programId, forceRefresh = false } = args;
+    const key = makeScheduleKey(year, section, programId);
+
+    if (!programId) {
+      return {
+        key,
+        data: [] as ScheduleEntry[],
+        message: year || section ? "Program id is required for filtering schedules." : "No program selected; schedule list is empty.",
+        filter: { year, section, programId },
+      };
+    }
+
+    const payload: Record<string, any> = { program_id: programId };
+    if (year) payload.year_level = year;
+    if (section && section.trim()) payload.section = section.trim();
+    if (forceRefresh) payload._ts = Date.now();
+
+    const response = await axios.post("/filter-schedule", payload, {
+      headers: {
+        ...authHeader(),
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (response.data?.success) {
+      return {
+        key,
+        data: (response.data.data || []) as ScheduleEntry[],
+        message: response.data.message as string | undefined,
+        filter: { year, section, programId },
+      };
+    }
+
+    throw new Error(response.data?.message || "Failed to fetch schedules.");
+  },
+  {
+    condition: (args, { getState }) => {
+      const { year, section, programId, forceRefresh = false } = args;
+      if (forceRefresh) return true;
+      const state = getState() as RootState;
+      const key = makeScheduleKey(year, section, programId);
+      const status = state.dataCache.scheduleStatusByKey[key];
+      return status !== "loading" && status !== "succeeded";
+    },
+  }
+);
+
 const dataCacheSlice = createSlice({
   name: "dataCache",
   initialState,
-  reducers: {},
+  reducers: {
+    setSelectedScheduleFilter: (
+      state,
+      action: {
+        payload: { year: number | null; section: string | null; programId: number | null };
+      }
+    ) => {
+      const { year, section, programId } = action.payload;
+      const key = makeScheduleKey(year, section, programId);
+      if (state.selectedScheduleKey === key) {
+        return;
+      }
+      state.selectedScheduleFilter = { year, section, programId };
+      state.selectedScheduleKey = key;
+      state.filteredSchedules = state.scheduleCacheByKey[key] || [];
+    },
+    clearSelectedScheduleFilter: (state) => {
+      state.selectedScheduleFilter = { year: null, section: null, programId: null };
+      state.selectedScheduleKey = null;
+      state.filteredSchedules = [];
+    },
+  },
   extraReducers: (builder) => {
     builder
       .addCase(fetchFaculties.pending, (state) => {
@@ -167,8 +255,28 @@ const dataCacheSlice = createSlice({
       .addCase(fetchFacultyLoading.rejected, (state, action) => {
         state.facultyLoadingStatus = "failed";
         state.error = action.error.message || "Failed to fetch faculty loading";
+      })
+      .addCase(fetchFilteredSchedules.pending, (state, action) => {
+        const { year, section, programId } = action.meta.arg;
+        const key = makeScheduleKey(year, section, programId);
+        state.scheduleStatusByKey[key] = "loading";
+      })
+      .addCase(fetchFilteredSchedules.fulfilled, (state, action) => {
+        const { key, data, filter } = action.payload;
+        state.scheduleStatusByKey[key] = "succeeded";
+        state.scheduleCacheByKey[key] = data;
+        state.selectedScheduleFilter = filter;
+        state.selectedScheduleKey = key;
+        state.filteredSchedules = data;
+      })
+      .addCase(fetchFilteredSchedules.rejected, (state, action) => {
+        const { year, section, programId } = action.meta.arg;
+        const key = makeScheduleKey(year, section, programId);
+        state.scheduleStatusByKey[key] = "failed";
+        state.error = action.error.message || "Failed to fetch schedules";
       });
   },
 });
 
+export const { setSelectedScheduleFilter, clearSelectedScheduleFilter } = dataCacheSlice.actions;
 export default dataCacheSlice.reducer;

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { BookOpen, Building2, FileText, LayoutDashboardIcon, LogOut, Users, X, Loader2 } from "lucide-react";
+import { BookOpen, Building2, FileText, LayoutDashboardIcon, LogOut, Users, X, Loader2, ChevronDown, List, CalendarDays } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
@@ -18,6 +18,7 @@ function Sidebar({ isOpen, setIsOpen, isCollapsed }: SidebarProps) {
   const navigate = useNavigate();
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [isClassroomMenuOpen, setIsClassroomMenuOpen] = useState(true);
 
   useEffect(() => {
     const checkScreenSize = () => setIsMobile(window.innerWidth < 768);
@@ -29,9 +30,6 @@ function Sidebar({ isOpen, setIsOpen, isCollapsed }: SidebarProps) {
     { href: "/admin/user-dashboard", label: "Dashboard", icon: <LayoutDashboardIcon size={20} /> },
     { href: "/admin/curriculum-management", label: "Curriculum", icon: <BookOpen size={20} /> },
     { href: "/admin/faculty", label: "Faculty", icon: <Users size={20} /> },
-    // { href: "/admin/faculty-loading", label: "Faculty Loading", icon: <Calendar size={20} /> },
-    { href: "/admin/room", label: "Classroom", icon: <Building2 size={20} /> },
-    { href: "/admin/reports", label: "Reports", icon: <FileText size={20} /> },
   ];
 
   const isRouteActive = (pathname: string, href: string) => {
@@ -39,6 +37,7 @@ function Sidebar({ isOpen, setIsOpen, isCollapsed }: SidebarProps) {
     const cleanHref = href.endsWith('/') && href.length > 1 ? href.slice(0, -1) : href;
     return cleanPath === cleanHref;
   };
+  const isClassroomRoute = location.pathname.startsWith("/admin/room");
 
   const handleSidebarLogout = async () => {
     if (isLoggingOut) return;
@@ -72,6 +71,10 @@ function Sidebar({ isOpen, setIsOpen, isCollapsed }: SidebarProps) {
     document.body.style.overflow = (isMobile && isOpen) ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
   }, [isOpen, isMobile]);
+
+  useEffect(() => {
+    if (isClassroomRoute) setIsClassroomMenuOpen(true);
+  }, [isClassroomRoute]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setIsOpen(false); };
@@ -130,6 +133,93 @@ function Sidebar({ isOpen, setIsOpen, isCollapsed }: SidebarProps) {
                   </li>
                 );
               })}
+
+              <li>
+                <button
+                  type="button"
+                  onClick={() => setIsClassroomMenuOpen((p) => !p)}
+                  className={`flex items-center gap-3 p-3 rounded-lg text-base transition w-full ${
+                    isClassroomRoute ? "bg-white/10 font-medium text-white shadow" : "text-gray-300 hover:bg-white/5 hover:text-white"
+                  } ${hideText ? "justify-center" : ""}`}
+                >
+                  <div className="shrink-0"><Building2 size={20} /></div>
+                  <AnimatePresence>
+                    {!hideText && (
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1, transition: { delay: 0.1 } }}
+                        exit={{ opacity: 0 }}
+                        className="flex items-center justify-between flex-1 min-w-0"
+                      >
+                        <span className="whitespace-nowrap">Classroom</span>
+                        <motion.span animate={{ rotate: isClassroomMenuOpen ? 180 : 0 }}>
+                          <ChevronDown size={16} />
+                        </motion.span>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </button>
+              </li>
+
+              {!hideText && isClassroomMenuOpen && (
+                <>
+                  <li>
+                    <Link
+                      to="/admin/room/classroom-list"
+                      className={`ml-9 flex items-center gap-2 p-2 rounded-md text-sm transition ${
+                        isRouteActive(location.pathname, "/admin/room/classroom-list")
+                          ? "bg-white/15 text-white"
+                          : "text-gray-300 hover:bg-white/5 hover:text-white"
+                      }`}
+                    >
+                      <List size={14} />
+                      Classroom List
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      to="/admin/room/class-schedule"
+                      className={`ml-9 flex items-center gap-2 p-2 rounded-md text-sm transition ${
+                        isRouteActive(location.pathname, "/admin/room/class-schedule")
+                          ? "bg-white/15 text-white"
+                          : "text-gray-300 hover:bg-white/5 hover:text-white"
+                      }`}
+                    >
+                      <CalendarDays size={14} />
+                      Class Schedule
+                    </Link>
+                  </li>
+                </>
+              )}
+              <li className="mt-2">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Link
+                      to="/admin/reports"
+                      className={`flex items-center gap-3 p-3 rounded-lg text-base transition ${
+                        isRouteActive(location.pathname, "/admin/reports")
+                          ? "bg-white/10 font-medium text-white shadow"
+                          : "text-gray-300 hover:bg-white/5 hover:text-white"
+                      } ${hideText ? 'justify-center' : ''}`}
+                    >
+                      <div className="shrink-0"><FileText size={20} /></div>
+                      <AnimatePresence>
+                        {!hideText && (
+                          <motion.span
+                            initial={{ opacity: 0, width: 0 }}
+                            animate={{ opacity: 1, width: 'auto', transition: { delay: 0.1 } }}
+                            exit={{ opacity: 0, width: 0 }}
+                            className="whitespace-nowrap overflow-hidden"
+                          >
+                            Reports
+                          </motion.span>
+                        )}
+                      </AnimatePresence>
+                    </Link>
+                  </TooltipTrigger>
+                  {hideText && <TooltipContent side="right" className="bg-gray-800 text-white border-gray-700">Reports</TooltipContent>}
+                </Tooltip>
+              </li>
             </ul>
           </nav>
           <div className="px-2 py-4 mt-auto border-t border-white/10 shrink-0">

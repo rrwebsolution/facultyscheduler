@@ -2,8 +2,8 @@
 
 import { motion } from "framer-motion";
 import { BarChart3 } from "lucide-react";
-import type { ApiFacultyLoad } from "../dashboard";
 import { Progress } from "@/components/ui/progress";
+import type { ApiFacultyLoad } from "../dashboard";
 
 interface FacultyLoadChartProps {
     facultyLoadData: ApiFacultyLoad[];

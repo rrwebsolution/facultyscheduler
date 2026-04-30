@@ -22,11 +22,6 @@ const FacultyNotification = lazy(() =>
   wait(3000).then(() => import('./views/faculty/notification/FacultyNotification'))
 );
 
-const ClassroomScheduleLayout = lazy(() => 
-  wait(3000).then(() => import('./views/department/classrommSchedule/ClassroomScheduleLayout'))
-);
-
-
 const DepartmentFacultyLoading = lazy(() => 
   wait(3000).then(() => import('./views/department/faculty-loading/FacultyLoading'))
 );
@@ -144,9 +139,20 @@ const routes = [
       },
       {
         path: 'room',
-        element: 
+        element: <Navigate to="/admin/room/classroom-list" replace />,
+      },
+      {
+        path: 'room/classroom-list',
+        element:
           <Suspense fallback={<Loader />}>
-            <RoomContainer />
+            <RoomContainer mode="classrooms" />
+          </Suspense>
+      },
+      {
+        path: 'room/class-schedule',
+        element:
+          <Suspense fallback={<Loader />}>
+            <RoomContainer mode="schedules" />
           </Suspense>
       },
       {
@@ -219,7 +225,7 @@ const routes = [
         path: 'class-schedules',
         element: 
           <Suspense fallback={<Loader />}>
-            <ClassroomScheduleLayout />
+            <RoomContainer mode="schedules" />
           </Suspense>
       },
       {

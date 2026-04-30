@@ -261,6 +261,41 @@ function Curriculum({ readOnly = false }: { readOnly?: boolean }) {
             });
     }, [programs, searchTerm, yearFilter, statusFilter]);
 
+    const curriculumStats = useMemo(() => {
+        const activePrograms = filteredPrograms.filter(p => p.isActive).length;
+        const inactivePrograms = filteredPrograms.length - activePrograms;
+        const totalSubjects = filteredPrograms.reduce((sum, p) => sum + (Number(p.total_subjects) || 0), 0);
+        const totalUnits = filteredPrograms.reduce((sum, p) => sum + (Number(p.total_units) || 0), 0);
+        const totalSemesters = filteredPrograms.reduce((sum, p) => sum + Object.keys(p.semesters || {}).length, 0);
+        const activeSemesters = filteredPrograms.reduce((sum, p) => {
+            const sems = Object.values(p.semesters || {}) as Semester[];
+            return sum + sems.filter(s => s?.isActive).length;
+        }, 0);
+
+        const bySubjects = [...filteredPrograms]
+            .sort((a, b) => (b.total_subjects || 0) - (a.total_subjects || 0))
+            .slice(0, 5);
+        const byUnits = [...filteredPrograms]
+            .sort((a, b) => (b.total_units || 0) - (a.total_units || 0))
+            .slice(0, 5);
+
+        const maxSubjects = Math.max(1, ...bySubjects.map(p => Number(p.total_subjects) || 0));
+        const maxUnits = Math.max(1, ...byUnits.map(p => Number(p.total_units) || 0));
+
+        return {
+            activePrograms,
+            inactivePrograms,
+            totalSubjects,
+            totalUnits,
+            totalSemesters,
+            activeSemesters,
+            bySubjects,
+            byUnits,
+            maxSubjects,
+            maxUnits,
+        };
+    }, [filteredPrograms]);
+
     return (
         <>
             <header className="mb-8 flex justify-between items-center">
@@ -293,6 +328,79 @@ function Curriculum({ readOnly = false }: { readOnly?: boolean }) {
                     </div>
                 </div>
             </div>
+
+            <div className="mb-8 grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <div className="rounded-lg border border-border bg-card p-4">
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Programs</p>
+                    <p className="text-2xl font-bold text-foreground mt-1">{filteredPrograms.length}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                        {curriculumStats.activePrograms} active, {curriculumStats.inactivePrograms} inactive
+                    </p>
+                </div>
+                <div className="rounded-lg border border-border bg-card p-4">
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Subjects and Units</p>
+                    <p className="text-2xl font-bold text-foreground mt-1">{curriculumStats.totalSubjects} subjects</p>
+                    <p className="text-xs text-muted-foreground mt-1">{curriculumStats.totalUnits} total units</p>
+                </div>
+                <div className="rounded-lg border border-border bg-card p-4">
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Semesters</p>
+                    <p className="text-2xl font-bold text-foreground mt-1">{curriculumStats.totalSemesters}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{curriculumStats.activeSemesters} currently active</p>
+                </div>
+            </div>
+
+            <div className="mb-8 grid grid-cols-1 xl:grid-cols-2 gap-4">
+                <div className="rounded-lg border border-border bg-card p-4">
+                    <h3 className="text-sm font-semibold text-foreground mb-3">Top Programs by Subject Count</h3>
+                    <div className="space-y-3">
+                        {curriculumStats.bySubjects.length === 0 ? (
+                            <p className="text-sm text-muted-foreground">No data to display.</p>
+                        ) : (
+                            curriculumStats.bySubjects.map((program) => {
+                                const value = Number(program.total_subjects) || 0;
+                                const width = (value / curriculumStats.maxSubjects) * 100;
+                                return (
+                                    <div key={`subjects-${program.id}`}>
+                                        <div className="flex items-center justify-between text-xs mb-1">
+                                            <span className="font-medium text-foreground">{program.abbreviation || program.name}</span>
+                                            <span className="text-muted-foreground">{value}</span>
+                                        </div>
+                                        <div className="h-2 rounded-full bg-muted overflow-hidden">
+                                            <div className="h-full bg-blue-500 rounded-full" style={{ width: `${width}%` }} />
+                                        </div>
+                                    </div>
+                                );
+                            })
+                        )}
+                    </div>
+                </div>
+
+                <div className="rounded-lg border border-border bg-card p-4">
+                    <h3 className="text-sm font-semibold text-foreground mb-3">Top Programs by Total Units</h3>
+                    <div className="space-y-3">
+                        {curriculumStats.byUnits.length === 0 ? (
+                            <p className="text-sm text-muted-foreground">No data to display.</p>
+                        ) : (
+                            curriculumStats.byUnits.map((program) => {
+                                const value = Number(program.total_units) || 0;
+                                const width = (value / curriculumStats.maxUnits) * 100;
+                                return (
+                                    <div key={`units-${program.id}`}>
+                                        <div className="flex items-center justify-between text-xs mb-1">
+                                            <span className="font-medium text-foreground">{program.abbreviation || program.name}</span>
+                                            <span className="text-muted-foreground">{value}</span>
+                                        </div>
+                                        <div className="h-2 rounded-full bg-muted overflow-hidden">
+                                            <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${width}%` }} />
+                                        </div>
+                                    </div>
+                                );
+                            })
+                        )}
+                    </div>
+                </div>
+            </div>
+
             {isLoading ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{Array.from({ length: 3 }).map((_, i) => (<SkeletonProgramCard key={i} />))}</div>
             ) : (

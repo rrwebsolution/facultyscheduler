@@ -38,6 +38,8 @@ interface Props {
     roomsData: Room[];
     facultyLoadingData: FacultyLoadEntry[];
     savedSections: SectionEntry[];
+    initialSelectedFilter?: { year: number | null; section: string | null; programId: number | null };
+    onClearFilter?: () => void;
     onAddSchedule: (entry: { 
       yearLevel: number; 
       section: string;
@@ -128,27 +130,28 @@ const ClassSchedule: React.FC<Props> = ({
     subjectsData = [], 
     facultyLoadingData = [], 
     savedSections = [], 
+    initialSelectedFilter,
+    onClearFilter,
     onAddSchedule, 
     onFilterApply,
     isInitialLoading = false,
     authToken 
 }) => {
-    
     // --- STATE FOR FETCHED PROGRAM DATA ---
     const [programsData, setProgramsData] = useState<Program[]>([]);
     const [isProgramsLoading, setIsProgramsLoading] = useState(false);
     // ----------------------------------------
 
     // APPLIED Filter States (control the grid)
-    const [viewYearLevel, setViewYearLevel] = useState<number | null>(null);
-    const [viewSection, setViewSection] = useState<string | null>(null);
-    const [viewProgramId, setViewProgramId] = useState<number | null>(null); 
+    const [viewYearLevel, setViewYearLevel] = useState<number | null>(initialSelectedFilter?.year ?? null);
+    const [viewSection, setViewSection] = useState<string | null>(initialSelectedFilter?.section ?? null);
+    const [viewProgramId, setViewProgramId] = useState<number | null>(initialSelectedFilter?.programId ?? null); 
     const [isFilterLoading, setIsFilterLoading] = useState(false); 
 
     // PENDING Filter States (control the toolbar selects)
-    const [selectedYearLevel, setSelectedYearLevel] = useState<string>("");
-    const [selectedSection, setSelectedSection] = useState<string>("");
-    const [selectedProgramId, setSelectedProgramId] = useState<string>(""); 
+    const [selectedYearLevel, setSelectedYearLevel] = useState<string>(initialSelectedFilter?.year ? String(initialSelectedFilter.year) : "");
+    const [selectedSection, setSelectedSection] = useState<string>(initialSelectedFilter?.section ?? "");
+    const [selectedProgramId, setSelectedProgramId] = useState<string>(initialSelectedFilter?.programId ? String(initialSelectedFilter.programId) : ""); 
 
     // Sections fetched from backend for the selected Program+Year (used to populate Section select)
     const [serverSections, setServerSections] = useState<string[] | null>(null);
@@ -209,6 +212,13 @@ const ClassSchedule: React.FC<Props> = ({
 
         fetchPrograms();
     }, [authToken]); 
+
+    useEffect(() => {
+        if (!viewYearLevel || !viewSection || !viewProgramId) return;
+        if (isProgramsLoading) return;
+        applyFilterFor(viewYearLevel, viewSection, viewProgramId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isProgramsLoading]);
 
 
     // --- LOGIC ---
@@ -434,7 +444,11 @@ const ClassSchedule: React.FC<Props> = ({
         setSelectedProgramId("");
         setSelectedYearLevel("");
         setSelectedSection("");
+        setViewProgramId(null);
+        setViewYearLevel(null);
+        setViewSection(null);
         setServerSections(null);
+        onClearFilter?.();
     };
 
     const handleOpenAddClass = () => {

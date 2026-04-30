@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import axios from "../../../plugin/axios";
 import { Button } from "@/components/ui/button";
-import { FileText, Calendar, BarChart3, Users, BookOpen, ClipboardList, Loader2, RefreshCw } from "lucide-react";
+import { FileText, Calendar, BarChart3, Users, BookOpen, ClipboardList, Loader2, RefreshCw, FileSpreadsheet } from "lucide-react";
 
 // Import the actual report components from their respective paths
 import { FacultyLoadingReport } from "./reports/FacultyLoadingReport"; 
@@ -19,10 +19,16 @@ interface KpiData {
 
 // --- TAB ID TYPE UPDATE ---
 type TabId = "loading" | "schedules" | "workloads" | "studyload";
+const REPORT_TAB_STORAGE_KEY = "admin_reports_active_tab_v1";
 
 // --- MAIN REPORTS PAGE COMPONENT ---
 function ReportsPage() {
-  const [activeTab, setActiveTab] = useState<TabId>("loading");
+  const [activeTab, setActiveTab] = useState<TabId>(() => {
+    const saved = localStorage.getItem(REPORT_TAB_STORAGE_KEY);
+    return (saved === "loading" || saved === "schedules" || saved === "workloads" || saved === "studyload")
+      ? saved
+      : "loading";
+  });
   const [kpiData, setKpiData] = useState<KpiData>({
     totalFaculty: 0,
     assignedSubjects: 0,
@@ -32,6 +38,7 @@ function ReportsPage() {
   const [kpiError, setKpiError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [lastUpdated, setLastUpdated] = useState<string>("");
 
   const fetchKpis = useCallback(async (forceRefresh = false) => {
     try {
@@ -51,6 +58,7 @@ function ReportsPage() {
       );
       if (response.data.success) {
         setKpiData(response.data.data);
+        setLastUpdated(new Date().toLocaleString());
       } else {
         setKpiError("Failed to load KPI data from the server.");
       }
@@ -63,6 +71,9 @@ function ReportsPage() {
   }, []);
 
   useEffect(() => { fetchKpis(); }, [fetchKpis]);
+  useEffect(() => {
+    localStorage.setItem(REPORT_TAB_STORAGE_KEY, activeTab);
+  }, [activeTab]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -329,6 +340,42 @@ function ReportsPage() {
   };
 
   // (Excel export removed as requested)
+  const exportCsv = () => {
+    const reportEl = document.getElementById("report-content");
+    if (!reportEl) return;
+
+    const visibleTable = Array.from(reportEl.querySelectorAll("table")).find((table) => {
+      const rect = table.getBoundingClientRect();
+      return rect.width > 0 && rect.height > 0;
+    }) as HTMLTableElement | undefined;
+
+    if (!visibleTable) {
+      alert("No visible table found to export.");
+      return;
+    }
+
+    const rows = Array.from(visibleTable.querySelectorAll("tr"));
+    const csvRows = rows.map((row) => {
+      const cols = Array.from(row.querySelectorAll("th, td"));
+      return cols
+        .map((col) => {
+          const raw = (col.textContent || "").replace(/\s+/g, " ").trim();
+          const escaped = raw.replace(/"/g, '""');
+          return `"${escaped}"`;
+        })
+        .join(",");
+    });
+
+    const blob = new Blob([csvRows.join("\n")], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${activeTab}-report.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
 
 
   return (
@@ -337,6 +384,7 @@ function ReportsPage() {
         <div>
             <h1 className="text-3xl md:text-4xl font-bold text-foreground tracking-tight">Generate Reports</h1>
             <p className="text-muted-foreground mt-2">View and export faculty loading, schedules, and workloads.</p>
+            {lastUpdated && <p className="text-xs text-muted-foreground mt-1">Last updated: {lastUpdated}</p>}
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -350,6 +398,7 @@ function ReportsPage() {
             <RefreshCw size={18} className={isRefreshing ? 'animate-spin' : ''} />
             <span className="text-sm font-medium">Refresh data</span>
           </button>
+          <Button variant="outline" onClick={exportCsv}><FileSpreadsheet className="h-4 w-4 mr-2" /> Export CSV</Button>
           <Button variant="outline" onClick={() => exportPdf()}><FileText className="h-4 w-4 mr-2" /> Export PDF</Button>
         </div>
       </header>

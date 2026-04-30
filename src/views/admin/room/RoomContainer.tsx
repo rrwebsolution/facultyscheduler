@@ -8,11 +8,14 @@ import {
   fetchFacultyLoading as fetchFacultyLoadingAction,
   fetchRooms as fetchRoomsAction,
   fetchSubjects as fetchSubjectsAction,
+  fetchFilteredSchedules as fetchFilteredSchedulesAction,
+  clearSelectedScheduleFilter,
+  setSelectedScheduleFilter,
 } from "@/store/slices/dataCacheSlice";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Plus, RefreshCw } from "lucide-react";
+import { Plus, RefreshCw, Building2, CalendarDays } from "lucide-react";
 
 // Importing UI and Component Dependencies
 import RoomTable from "./table/RoomTable";
@@ -26,7 +29,7 @@ import type { FacultyLoadEntry, Room, RoomFormData, ScheduleEntry, SectionEntry,
 
 
 // --- MAIN COMPONENT ---
-function RoomContainer() {
+function RoomContainer({ mode = "both" }: { mode?: "both" | "classrooms" | "schedules" }) {
   const dispatch = useAppDispatch();
   const cachedRooms = useAppSelector((state) => state.dataCache.rooms);
   const cachedSubjects = useAppSelector((state) => state.dataCache.subjects);
@@ -35,8 +38,10 @@ function RoomContainer() {
   const subjectsStatus = useAppSelector((state) => state.dataCache.subjectsStatus);
   const facultyLoadingStatus = useAppSelector((state) => state.dataCache.facultyLoadingStatus);
 
-  // --- DATA STATES ---
-  const [schedules, setSchedules] = useState<ScheduleEntry[]>([]); 
+  const schedules = useAppSelector((state) => state.dataCache.filteredSchedules) as ScheduleEntry[];
+  const selectedScheduleFilter = useAppSelector((state) => state.dataCache.selectedScheduleFilter);
+  const scheduleCacheByKey = useAppSelector((state) => state.dataCache.scheduleCacheByKey);
+  const scheduleStatusByKey = useAppSelector((state) => state.dataCache.scheduleStatusByKey);
 
   const [savedSections, setSavedSections] = useState<SectionEntry[]>(() => {
     if (typeof window !== 'undefined') {
@@ -54,7 +59,7 @@ function RoomContainer() {
 
   const [isAvailabilityModalOpen, setIsAvailabilityModalOpen] = useState(false);
   const [selectedRoomForAvailability, setSelectedRoomForAvailability] = useState<Room | null>(null);
-  const [activeTab, setActiveTab] = useState<"classrooms" | "schedules">("classrooms");
+  const [activeTab, setActiveTab] = useState<"classrooms" | "schedules">(mode === "schedules" ? "schedules" : "classrooms");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const subjects = useMemo(() => {
     return (cachedSubjects || []).map((s: any) => ({
@@ -70,6 +75,62 @@ function RoomContainer() {
       lab_units: s.lab_units,
     })) as Subject[];
   }, [cachedSubjects]);
+
+  useEffect(() => {
+    if (mode === "classrooms") setActiveTab("classrooms");
+    if (mode === "schedules") setActiveTab("schedules");
+  }, [mode]);
+
+  const roomMonitoring = useMemo(() => {
+    const rooms = (cachedRooms as Room[]) || [];
+    const scheduleRows = schedules || [];
+
+    const totalRooms = rooms.length;
+    const activeRooms = rooms.filter((r) => Number(r.status) === 0).length;
+    const totalSchedules = scheduleRows.length;
+    const uniqueSections = new Set(scheduleRows.map((s) => `${s.year_level}-${s.section}-${s.program_id || 0}`)).size;
+    const totalCapacity = rooms.reduce((sum, r) => sum + (Number(r.capacity) || 0), 0);
+
+    const timeToMinutes = (time: string) => {
+      if (!time) return 0;
+      const clean = String(time).slice(0, 5);
+      const [h, m] = clean.split(":").map(Number);
+      if (!Number.isFinite(h) || !Number.isFinite(m)) return 0;
+      return h * 60 + m;
+    };
+
+    const roomHoursMap = new Map<number, number>();
+    for (const sch of scheduleRows) {
+      const roomId = Number(sch?.faculty_loading?.room?.id || sch?.faculty_loading?.room_id || 0);
+      if (!roomId) continue;
+      const start = sch?.faculty_loading?.start_time || "";
+      const end = sch?.faculty_loading?.end_time || "";
+      const mins = Math.max(0, timeToMinutes(end) - timeToMinutes(start));
+      const hours = mins / 60;
+      roomHoursMap.set(roomId, (roomHoursMap.get(roomId) || 0) + hours);
+    }
+
+    const roomUsage = rooms.map((room) => ({
+      roomId: room.id,
+      roomName: room.roomNumber,
+      usedHours: roomHoursMap.get(room.id) || 0,
+      capacity: Number(room.capacity) || 0,
+    }));
+    const topUsedRooms = [...roomUsage].sort((a, b) => b.usedHours - a.usedHours).slice(0, 5);
+    const maxUsedHours = Math.max(1, ...topUsedRooms.map((r) => r.usedHours));
+
+    return {
+      totalRooms,
+      activeRooms,
+      inactiveRooms: Math.max(0, totalRooms - activeRooms),
+      totalSchedules,
+      uniqueSections,
+      totalCapacity,
+      topUsedRooms,
+      maxUsedHours,
+      totalUsedHours: roomUsage.reduce((sum, r) => sum + r.usedHours, 0),
+    };
+  }, [cachedRooms, schedules]);
 
   // --- API CALLS (Logic remains the same) ---
   const fetchRooms = useCallback(async (force = false) => {
@@ -104,73 +165,59 @@ function RoomContainer() {
     }
   }, [dispatch]);
 
-  // MODIFIED: Added programId to fetchSchedules
   const fetchSchedules = useCallback(async (
     year: number | null = null,
     section: string | null = null,
     programId: number | null = null,
     forceRefresh = false
   ): Promise<{ success: boolean; data: ScheduleEntry[]; message?: string }> => {
-    const token = localStorage.getItem('accessToken');
-    if (!token) {
-        return { success: false, data: [], message: "Authentication required." };
-    }
+    const key = `${programId ?? "none"}|${year ?? "none"}|${(section || "").trim() || "all"}`;
+    const cached = scheduleCacheByKey[key] || [];
+    const status = scheduleStatusByKey[key];
 
-    // If no programId is provided, do not call the filter endpoint because
-    // the backend requires `program_id`. Instead, return an empty successful
-    // response so the UI can remain functional until the user selects a program.
-    if (!programId) {
-        // If the caller provided year/section but not programId, return a helpful message
-        if (year || section) {
-            return { success: false, data: [], message: 'Program id is required for filtering schedules.' };
-        }
-        return { success: true, data: [], message: 'No program selected; schedule list is empty.' };
+    if (!forceRefresh && status === "succeeded") {
+      dispatch(setSelectedScheduleFilter({ year, section, programId }));
+      return { success: true, data: cached, message: "Loaded from cache." };
     }
-
-    const payload: Record<string, any> = {};
-    if (year) payload.year_level = year;
-    if (section) payload.section = section;
-    payload.program_id = programId; // <--- include required field
-    if (forceRefresh) payload._ts = Date.now();
 
     try {
-        const response = await axios.post('/filter-schedule', payload, { 
-            headers: { 
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json' 
-            }
-        });
-        
-        if (response.data.success) {
-          const raw = response.data.data || [];
-          const apiSchedules: ScheduleEntry[] = raw as ScheduleEntry[]; 
-          return {
-            success: true,
-            data: apiSchedules,
-            message: response.data.message
-          };
-        }
-        return { success: false, data: [], message: response.data.message || "Failed to fetch schedules." };
-    } catch (error: any) {
-        if (error.response?.status === 401) {
-             return { success: false, data: [], message: "Session expired or unauthorized. Please log in again." };
-        }
-        console.error("Fetch Schedules Error:", error);
-        return { success: false, data: [], message: error.response?.data?.message || "An unexpected error occurred." };
-    }
-  }, []);
+      const action = await dispatch(
+        fetchFilteredSchedulesAction({ year, section, programId, forceRefresh })
+      );
 
-  // MODIFIED: Added programId to handleFilterApply
-  const handleFilterApply = useCallback(async (year: number, section: string, programId: number) => {
-    // Pass programId to the fetch function
-    const result = await fetchSchedules(year, section, programId); 
-    
-    if (result.success) {
-        setSchedules(result.data); 
+      if (fetchFilteredSchedulesAction.fulfilled.match(action)) {
+        const payload = action.payload;
+        return {
+          success: true,
+          data: payload.data || [],
+          message: payload.message,
+        };
+      }
+
+      // Condition callback aborted duplicate request: return cached data quietly.
+      if (fetchFilteredSchedulesAction.rejected.match(action) && action.meta.condition) {
+        dispatch(setSelectedScheduleFilter({ year, section, programId }));
+        return { success: true, data: cached, message: "Loaded from cache." };
+      }
+
+      return {
+        success: false,
+        data: [],
+        message: action.error?.message || "Failed to fetch schedules.",
+      };
+    } catch (error: any) {
+      return { success: false, data: [], message: error?.message || "An unexpected error occurred." };
     }
-    
+  }, [dispatch, scheduleCacheByKey, scheduleStatusByKey]);
+
+  const handleFilterApply = useCallback(async (year: number, section: string, programId: number) => {
+    const result = await fetchSchedules(year, section, programId); 
     return result;
   }, [fetchSchedules]);
+
+  const handleClearScheduleFilter = useCallback(() => {
+    dispatch(clearSelectedScheduleFilter());
+  }, [dispatch]);
 
 
   // Initial Data Load: Fetch all required data
@@ -178,18 +225,27 @@ function RoomContainer() {
     const loadData = async () => {
       setIsLoading(true);
       try {
-        const loadTasks: Promise<any>[] = [fetchSchedules()];
+        const loadTasks: Promise<any>[] = [];
+        const hasSelectedProgram = !!selectedScheduleFilter?.programId;
+        if (hasSelectedProgram) {
+          loadTasks.push(
+            fetchSchedules(
+              selectedScheduleFilter.year ?? null,
+              selectedScheduleFilter.section ?? null,
+              selectedScheduleFilter.programId ?? null
+            )
+          );
+        }
         if (roomsStatus === "idle") loadTasks.push(fetchRooms());
         if (subjectsStatus === "idle") loadTasks.push(fetchSubjects());
         if (facultyLoadingStatus === "idle") loadTasks.push(fetchFacultyLoading());
 
         const results = await Promise.all(loadTasks);
-        const scheduleResult = results[0];
-        
-        if (scheduleResult.success) {
-             setSchedules(scheduleResult.data);
-        } else {
-             toast.error(scheduleResult.message);
+        if (hasSelectedProgram) {
+          const scheduleResult = results[0];
+          if (!scheduleResult?.success && scheduleResult?.message) {
+            toast.error(scheduleResult.message);
+          }
         }
 
       } catch (error) {
@@ -199,7 +255,7 @@ function RoomContainer() {
       }
     }
     loadData();
-  }, [fetchRooms, fetchSubjects, fetchFacultyLoading, fetchSchedules, roomsStatus, subjectsStatus, facultyLoadingStatus]);
+  }, [fetchRooms, fetchSubjects, fetchFacultyLoading, fetchSchedules, roomsStatus, subjectsStatus, facultyLoadingStatus, selectedScheduleFilter]);
 
 
   // --- ROOM CRUD HANDLERS (Logic remains the same) ---
@@ -269,13 +325,14 @@ function RoomContainer() {
     setIsLoading(true);
     try {
       const loadTasks: Promise<any>[] = [fetchRooms(true), fetchSubjects(true), fetchFacultyLoading(true)];
-      if (activeTab === "schedules") {
+      if (activeTab === "schedules" && selectedScheduleFilter?.programId) {
         loadTasks.push(
-          fetchSchedules(null, null, null, true).then((result) => {
-            if (result.success) {
-              setSchedules(result.data);
-            }
-          })
+          fetchSchedules(
+            selectedScheduleFilter.year ?? null,
+            selectedScheduleFilter.section ?? null,
+            selectedScheduleFilter.programId ?? null,
+            true
+          )
         );
       }
       await Promise.all(loadTasks);
@@ -402,7 +459,7 @@ function RoomContainer() {
               <RefreshCw size={16} className={isRefreshing ? "animate-spin" : ""} />
               <span className="text-sm font-medium">Refresh data</span>
             </Button>
-            {activeTab === "classrooms" && (
+            {(mode !== "schedules" && activeTab === "classrooms") && (
               <Button onClick={handleAddRoom} className="shadow-md hover:shadow-lg transition-all">
                 <Plus size={16} className="mr-2" />
                 Add Room
@@ -411,13 +468,65 @@ function RoomContainer() {
           </div>
         </header>
 
-        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "classrooms" | "schedules")}>
-          <TabsList className="grid w-full grid-cols-2 mb-4">
-            <TabsTrigger value="classrooms">Classroom List</TabsTrigger>
-            <TabsTrigger value="schedules">Class Schedules</TabsTrigger>
-          </TabsList>
+        <Tabs value={activeTab} onValueChange={(value) => mode === "both" && setActiveTab(value as "classrooms" | "schedules")}>
+          {mode === "both" && (
+            <TabsList className="mb-6 grid w-full grid-cols-1 sm:grid-cols-2 h-auto gap-3 bg-transparent p-0">
+              <TabsTrigger
+                value="classrooms"
+                className="h-auto rounded-xl border border-border bg-card p-4 data-[state=active]:border-blue-500 data-[state=active]:bg-blue-50/60"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="rounded-lg bg-blue-100 p-2 text-blue-700">
+                    <Building2 size={16} />
+                  </div>
+                  <div className="text-left">
+                    <p className="font-semibold text-foreground">Classroom List</p>
+                    <p className="text-xs text-muted-foreground">Manage rooms and availability</p>
+                  </div>
+                </div>
+              </TabsTrigger>
+              <TabsTrigger
+                value="schedules"
+                className="h-auto rounded-xl border border-border bg-card p-4 data-[state=active]:border-indigo-500 data-[state=active]:bg-indigo-50/60"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="rounded-lg bg-indigo-100 p-2 text-indigo-700">
+                    <CalendarDays size={16} />
+                  </div>
+                  <div className="text-left">
+                    <p className="font-semibold text-foreground">Class Schedules</p>
+                    <p className="text-xs text-muted-foreground">View and assign class schedules</p>
+                  </div>
+                </div>
+              </TabsTrigger>
+            </TabsList>
+          )}
 
           <TabsContent value="classrooms">
+            <div className="mb-6 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+              <div className="rounded-lg border border-border bg-card p-4">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Rooms</p>
+                <p className="text-2xl font-bold text-foreground mt-1">{roomMonitoring.totalRooms}</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {roomMonitoring.activeRooms} active, {roomMonitoring.inactiveRooms} inactive
+                </p>
+              </div>
+              <div className="rounded-lg border border-border bg-card p-4">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Seat Capacity</p>
+                <p className="text-2xl font-bold text-foreground mt-1">{roomMonitoring.totalCapacity}</p>
+                <p className="text-xs text-muted-foreground mt-1">Combined room capacity</p>
+              </div>
+              <div className="rounded-lg border border-border bg-card p-4">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Schedules</p>
+                <p className="text-2xl font-bold text-foreground mt-1">{roomMonitoring.totalSchedules}</p>
+                <p className="text-xs text-muted-foreground mt-1">Linked schedules across rooms</p>
+              </div>
+              <div className="rounded-lg border border-border bg-card p-4">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Sections Covered</p>
+                <p className="text-2xl font-bold text-foreground mt-1">{roomMonitoring.uniqueSections}</p>
+                <p className="text-xs text-muted-foreground mt-1">Unique section allocations</p>
+              </div>
+            </div>
             <RoomTable
               roomsData={cachedRooms as Room[]}
               scheduleData={schedules}
@@ -430,12 +539,40 @@ function RoomContainer() {
           </TabsContent>
 
           <TabsContent value="schedules">
+            <div className="mb-6 rounded-lg border border-border bg-card p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-foreground">Top Rooms by Scheduled Hours</h3>
+                <p className="text-xs text-muted-foreground">Total used time: {roomMonitoring.totalUsedHours.toFixed(1)}h</p>
+              </div>
+              <div className="space-y-3">
+                {roomMonitoring.topUsedRooms.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No schedule data to visualize yet.</p>
+                ) : (
+                  roomMonitoring.topUsedRooms.map((room) => {
+                    const width = (room.usedHours / roomMonitoring.maxUsedHours) * 100;
+                    return (
+                      <div key={room.roomId}>
+                        <div className="flex items-center justify-between text-xs mb-1">
+                          <span className="font-medium text-foreground">{room.roomName}</span>
+                          <span className="text-muted-foreground">{room.usedHours.toFixed(1)}h</span>
+                        </div>
+                        <div className="h-2 rounded-full bg-muted overflow-hidden">
+                          <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${width}%` }} />
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
             <ClassSchedule
               scheduleData={schedules}
               subjectsData={subjects}
               roomsData={cachedRooms as Room[]}
               facultyLoadingData={cachedFacultyLoading as FacultyLoadEntry[]} 
               savedSections={savedSections}
+              initialSelectedFilter={selectedScheduleFilter}
+              onClearFilter={handleClearScheduleFilter}
               onAddSchedule={handleAddScheduleEntry}
               onFilterApply={handleFilterApply}
               authToken={token} // Pass the token read from localStorage

@@ -1,18 +1,16 @@
 // src/views/admin/DeanDashboardContainer.tsx
 
-import { useState, useEffect } from "react"; // Removed useCallback
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { CalendarCheck, RefreshCw } from "lucide-react"; // Removed Loader2
+import { CalendarCheck, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import axios from "../../../plugin/axios"; 
 
-// --- DATA & CHART IMPORTS (Adjust paths as necessary) ---
 import { KpiCards } from "./card/KpiCards"; 
-import { WeeklyOverviewChart } from "./chart/WeeklyOverviewChart.tsx";
 import { ClassBreakdown } from "./ClassBreakdown";
-import { FacultyLoadChart } from "./chart/FacultyLoadChart.tsx";
+import { WeeklyOverviewChart } from "./chart/WeeklyOverviewChart";
+import { FacultyLoadChart } from "./chart/FacultyLoadChart";
 
-// --- NEW DATA INTERFACES BASED ON LARAVEL API (Keep these in sync with your API) ---
 export type DayKey = 'MON' | 'TUE' | 'WED' | 'THU' | 'FRI' | 'SAT';
 
 interface ApiKpi {
@@ -50,12 +48,9 @@ interface ApiWeeklyScheduleResponse {
     allClasses: ApiScheduleClass[];
 }
 
-// Helper to get the token
 const getToken = () => localStorage.getItem('accessToken');
 const getAuthHeader = () => ({ 'Authorization': `Bearer ${getToken()}` });
 
-
-// --- API CALL IMPLEMENTATIONS ---
 const fetchDashboardData = async (forceRefresh = false): Promise<{
     kpiData: ApiKpi[];
     weeklySchedule: ApiWeeklyScheduleResponse;
@@ -68,7 +63,7 @@ const fetchDashboardData = async (forceRefresh = false): Promise<{
     const config = { headers: getAuthHeader() };
 
     try {
-        const [kpiRes, weeklyRes, loadRes] = await Promise.all([
+        const[kpiRes, weeklyRes, loadRes] = await Promise.all([
             axios.get('kpi', { ...config, params: forceRefresh ? { _ts: Date.now() } : undefined }), 
             axios.get('weekly-schedule', { ...config, params: forceRefresh ? { _ts: Date.now() } : undefined }), 
             axios.get('faculty-load', { ...config, params: forceRefresh ? { _ts: Date.now() } : undefined }), 
@@ -88,49 +83,42 @@ const fetchDashboardData = async (forceRefresh = false): Promise<{
     }
 };
 
-// --- SKELETON COMPONENTS ---
-// Note: This component definition is kept as-is, but in a separate file for cleaner code
 const DashboardSkeleton = () => (
-    <div className="space-y-8 animate-accordion-down">
+    <div className="space-y-8 animate-pulse">
         {/* Header Skeleton */}
-        <div className="h-40 w-full bg-purple-200 rounded-xl shadow-lg"></div>
+        <div className="h-28 w-full bg-muted rounded-xl border"></div>
 
         {/* Main Grid Skeleton */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-            {/* Left Column (KPI, Weekly Chart) */}
             <div className="lg:col-span-2 space-y-8">
-                {/* KPI Cards Skeleton */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     {Array.from({ length: 4 }).map((_, i) => (
-                        <div key={i} className="bg-gray-100 p-4 rounded-lg border h-24">
-                            <div className="h-8 w-8 bg-gray-300 rounded-md mb-2"></div>
-                            <div className="h-4 w-1/2 bg-gray-300 rounded"></div>
+                        <div key={i} className="bg-card p-4 rounded-lg border h-24">
+                            <div className="h-6 w-6 bg-muted rounded-md mb-2"></div>
+                            <div className="h-4 w-1/2 bg-muted rounded"></div>
                         </div>
                     ))}
                 </div>
 
-                {/* Weekly Chart Skeleton */}
-                <div className="bg-gray-100 p-6 rounded-xl border h-72">
-                    <div className="h-4 w-1/3 bg-gray-300 rounded mb-4"></div>
+                <div className="bg-card p-6 rounded-xl border h-72">
+                    <div className="h-4 w-1/3 bg-muted rounded mb-4"></div>
                     <div className="flex justify-between items-end gap-3 h-48 pt-8">
                         {Array.from({ length: 6 }).map((_, i) => (
                             <div key={i} className="relative flex-1 flex flex-col items-center gap-2 h-full">
-                                <div className="w-full bg-gray-200 rounded-t-md" style={{ height: `${(i + 1) * 10}%` }}></div>
-                                <div className="h-3 w-8 bg-gray-300 rounded"></div>
+                                <div className="w-full max-w-[40px] bg-muted rounded-t-md" style={{ height: `${(i + 1) * 10}%` }}></div>
                             </div>
                         ))}
                     </div>
                 </div>
             </div>
 
-            {/* Right Column (Faculty Load Chart) */}
             <div className="lg:col-span-1 space-y-8">
-                <div className="bg-gray-100 p-6 rounded-xl border h-72">
-                    <div className="h-4 w-1/2 bg-gray-300 rounded mb-6"></div>
+                <div className="bg-card p-6 rounded-xl border h-72">
+                    <div className="h-4 w-1/2 bg-muted rounded mb-6"></div>
                     {Array.from({ length: 3 }).map((_, i) => (
                         <div key={i} className="space-y-2 mb-4">
-                            <div className="h-3 w-3/4 bg-gray-300 rounded"></div>
-                            <div className="h-4 bg-gray-200 rounded-full"></div>
+                            <div className="h-3 w-3/4 bg-muted rounded"></div>
+                            <div className="h-4 bg-muted rounded-full"></div>
                         </div>
                     ))}
                 </div>
@@ -138,9 +126,6 @@ const DashboardSkeleton = () => (
         </div>
     </div>
 );
-
-
-// --- MAIN CONTAINER COMPONENT ---
 
 function DeanDashboardContainer() {
   const [selectedDay, setSelectedDay] = useState<DayKey | null>(null);
@@ -170,19 +155,17 @@ function DeanDashboardContainer() {
 
   useEffect(() => {
     loadData();
-  }, []);
+  },[]);
 
   const handleRefresh = () => {
     setIsRefreshing(true);
     loadData(true);
   };
 
-
   if (isLoading || !dashboardData) {
     return <DashboardSkeleton />;
   }
 
-  // Destructure data for cleaner use
   const { kpiData, weeklySchedule, facultyLoad } = dashboardData;
   const allClassesData = weeklySchedule.allClasses;
   const weeklyTotalClasses = Object.values(weeklySchedule.weeklyOverview || {}).reduce((acc, val) => acc + Number(val || 0), 0);
@@ -193,64 +176,55 @@ function DeanDashboardContainer() {
     <div className="space-y-8">
       {/* Hero / Header */}
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="relative overflow-hidden rounded-xl bg-gradient-to-r from-purple-600 to-fuchsia-500 text-white shadow-lg"
+        transition={{ duration: 0.4 }}
+        className="rounded-xl bg-card border text-card-foreground shadow-sm"
       >
-        <div className="relative p-6 md:p-8">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <div className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold">
-                <CalendarCheck size={14} />
-                Dean's Dashboard
-              </div>
-              <h1 className="mt-3 text-3xl md:text-4xl font-bold tracking-tight">Scheduling Overview</h1>
-              <p className="text-white/80 max-w-2xl">Manage and oversee all faculty schedules for the department.</p>
+        <div className="p-6 md:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div>
+            <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+              <CalendarCheck size={14} />
+              Dean's Dashboard
             </div>
-            <button
-              type="button"
-              onClick={handleRefresh}
-              disabled={isRefreshing}
-              className="self-start inline-flex items-center gap-2 px-3 py-2 rounded-md text-white/80 hover:text-white hover:bg-white/10 transition-colors"
-              title="Refresh data"
-              aria-label="Refresh data"
-            >
-              <RefreshCw size={18} className={isRefreshing ? 'animate-spin' : ''} />
-              <span className="text-sm font-medium">Refresh data</span>
-            </button>
-            {/* <Link to="/dean/conflicts" className="hidden sm:inline-flex items-center gap-2 rounded-md bg-white/10 text-white font-semibold px-4 py-2 hover:bg-white/20 transition">
-              <AlertTriangle size={16} /> Resolve Conflicts
-            </Link> */}
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Scheduling Overview</h1>
+            <p className="text-muted-foreground mt-1 max-w-2xl">Manage and oversee all faculty schedules for the department.</p>
           </div>
+          <button
+            type="button"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors border shadow-sm"
+          >
+            <RefreshCw size={16} className={isRefreshing ? 'animate-spin' : ''} />
+            <span className="text-sm font-medium">Refresh Data</span>
+          </button>
         </div>
       </motion.div>
 
+      {/* Summary Cards */}
       <div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="rounded-xl border bg-white p-4">
-            <p className="text-xs text-slate-500">Weekly Classes</p>
-            <p className="text-2xl font-bold text-slate-900">{weeklyTotalClasses}</p>
+          <div className="rounded-xl border bg-card p-5 shadow-sm flex flex-col justify-center">
+            <p className="text-sm font-medium text-muted-foreground">Weekly Classes</p>
+            <p className="text-3xl font-bold mt-1">{weeklyTotalClasses}</p>
           </div>
-          <div className="rounded-xl border bg-white p-4">
-            <p className="text-xs text-slate-500">Peak Day</p>
-            <p className="text-2xl font-bold text-slate-900">{peakDay}</p>
+          <div className="rounded-xl border bg-card p-5 shadow-sm flex flex-col justify-center">
+            <p className="text-sm font-medium text-muted-foreground">Peak Day</p>
+            <p className="text-3xl font-bold mt-1">{peakDay}</p>
           </div>
-          <div className="rounded-xl border bg-white p-4">
-            <p className="text-xs text-slate-500">Faculty Tracked</p>
-            <p className="text-2xl font-bold text-slate-900">{facultyLoad.length}</p>
+          <div className="rounded-xl border bg-card p-5 shadow-sm flex flex-col justify-center">
+            <p className="text-sm font-medium text-muted-foreground">Faculty Tracked</p>
+            <p className="text-3xl font-bold mt-1">{facultyLoad.length}</p>
           </div>
         </div>
       </div>
 
       {/* Main Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-        {/* Left Column (Main Content) */}
         <div className="lg:col-span-2 space-y-8">
-          {/* KPI Cards: Pass API Data (Prop 'data' is expected here) */}
           <KpiCards data={kpiData} /> 
 
-          {/* Weekly Overview Chart: Pass API Data (Fix: Re-introduce allClassesData) */}
           <WeeklyOverviewChart 
             weeklyOverviewData={weeklySchedule.weeklyOverview} 
             allClasses={allClassesData} 
@@ -258,7 +232,6 @@ function DeanDashboardContainer() {
             onDaySelect={handleDaySelect} 
           />
 
-          {/* Class Breakdown: Pass API Data (Prop 'classes' is expected here) */}
           <AnimatePresence>
             {selectedDay && (
               <ClassBreakdown 
@@ -270,9 +243,7 @@ function DeanDashboardContainer() {
           </AnimatePresence>
         </div>
 
-        {/* Right Column (Sidebar-like content) */}
         <div className="lg:col-span-1 space-y-8">
-          {/* Faculty Load Chart: Pass API Data (Prop 'facultyLoadData' is expected here) */}
           <FacultyLoadChart facultyLoadData={facultyLoad} />
         </div>
       </div>

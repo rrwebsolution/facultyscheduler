@@ -33,14 +33,24 @@ export const SkeletonFacultyCard = () => (
     
     {/* 6. Overload (overload_units) */}
     <TableCell className="text-center"><Skeleton className="h-4 w-10 mx-auto" /></TableCell> 
+
+    {/* 7. Availability Monitor */}
+    <TableCell>
+      <div className="space-y-2">
+        <Skeleton className="h-3 w-32" />
+        <Skeleton className="h-2 w-full" />
+        <Skeleton className="h-3 w-24" />
+      </div>
+    </TableCell>
     
-    {/* 7. Status */}
+    {/* 8. Status */}
     <TableCell><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
     
-    {/* 8. Actions (4 ICONS) */}
+    {/* 9. Actions */}
     <TableCell>
         <div className="flex justify-end items-center gap-1">
-            {/* Action Buttons (List, CalendarDays, Edit, Trash2) */}
+            {/* Action Buttons */}
+            <Skeleton className="h-8 w-8 rounded-md" />
             <Skeleton className="h-8 w-8 rounded-md" />
             <Skeleton className="h-8 w-8 rounded-md" />
             <Skeleton className="h-8 w-8 rounded-md" />

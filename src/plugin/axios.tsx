@@ -9,6 +9,7 @@ api.defaults.headers.get.Accept = 'application/json';
 
 const CACHE_PREFIX = 'fs_http_cache_v2:';
 const inFlightGetRequests = new Map<string, Promise<AxiosResponse>>();
+const scheduleRequestCounters = new Map<string, number>();
 
 const normalizeUrl = (url?: string) => {
   if (!url) return '';
@@ -28,6 +29,24 @@ const clearApiCache = () => {
     if (key?.startsWith(CACHE_PREFIX)) keys.push(key);
   }
   keys.forEach((key) => localStorage.removeItem(key));
+};
+
+const isDev = import.meta.env.DEV;
+
+const getScheduleFilterKeyFromData = (data: unknown) => {
+  if (!data) return null;
+  let payload: any = data;
+  if (typeof data === 'string') {
+    try {
+      payload = JSON.parse(data);
+    } catch {
+      return null;
+    }
+  }
+  const programId = payload?.program_id ?? 'none';
+  const year = payload?.year_level ?? 'none';
+  const section = payload?.section ?? 'all';
+  return `${programId}|${year}|${section}`;
 };
 
 const baseGet = api.get.bind(api);
@@ -96,6 +115,49 @@ api.interceptors.response.use(
     return response;
   },
   (error) => Promise.reject(error)
+);
+
+api.interceptors.request.use((config) => {
+  if (!isDev) return config;
+
+  const method = (config.method || '').toLowerCase();
+  const url = normalizeUrl(config.url);
+  if (method === 'post' && url.includes('/filter-schedule')) {
+    const filterKey = getScheduleFilterKeyFromData(config.data) || 'unknown';
+    const nextCount = (scheduleRequestCounters.get(filterKey) || 0) + 1;
+    scheduleRequestCounters.set(filterKey, nextCount);
+    console.info(`[SCHEDULE-REQ] hit #${nextCount} key=${filterKey}`);
+  }
+
+  return config;
+});
+
+api.interceptors.response.use(
+  (response) => {
+    if (!isDev) return response;
+    const method = (response.config.method || '').toLowerCase();
+    const url = normalizeUrl(response.config.url);
+    if (method === 'post' && url.includes('/filter-schedule')) {
+      const filterKey = getScheduleFilterKeyFromData(response.config.data) || 'unknown';
+      const totalHits = scheduleRequestCounters.get(filterKey) || 0;
+      console.info(`[SCHEDULE-REQ] success key=${filterKey} totalHits=${totalHits}`);
+      (globalThis as any).__fsScheduleRequestCounters = Object.fromEntries(scheduleRequestCounters.entries());
+    }
+    return response;
+  },
+  (error) => {
+    if (isDev) {
+      const method = (error?.config?.method || '').toLowerCase();
+      const url = normalizeUrl(error?.config?.url);
+      if (method === 'post' && url.includes('/filter-schedule')) {
+        const filterKey = getScheduleFilterKeyFromData(error?.config?.data) || 'unknown';
+        const totalHits = scheduleRequestCounters.get(filterKey) || 0;
+        console.warn(`[SCHEDULE-REQ] failed key=${filterKey} totalHits=${totalHits}`);
+        (globalThis as any).__fsScheduleRequestCounters = Object.fromEntries(scheduleRequestCounters.entries());
+      }
+    }
+    return Promise.reject(error);
+  }
 );
 
 export default api;

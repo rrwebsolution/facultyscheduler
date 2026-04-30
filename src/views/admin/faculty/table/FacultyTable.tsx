@@ -30,6 +30,7 @@ import {
   KeyRound,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { AddFacultyButton } from "../modal/AddFacultyButton";
 import { SkeletonFacultyCard } from "./../SkeletonFacultyCard";
 import axios from "../../../../plugin/axios";
@@ -61,6 +62,21 @@ export interface Faculty {
   role?: number;
 }
 
+interface FacultyLoadSnapshot {
+  usedHours: number;
+  availableHours: number;
+  remainingHours: number;
+  utilization: number;
+}
+interface FacultyAvailabilitySnapshot {
+  lines: string[];
+}
+
+interface TimeRange {
+  start: string;
+  end: string;
+}
+
 const expertiseColorPalette = [
     { bg: "bg-blue-100", text: "text-blue-800" },
     { bg: "bg-emerald-100", text: "text-emerald-800" },
@@ -82,6 +98,8 @@ const getStringHash = (str: string) => {
 
 function FacultyTable() {
   const [allFaculty, setAllFaculty] = useState<Faculty[]>([]);
+  const [facultyLoadById, setFacultyLoadById] = useState<Record<number, FacultyLoadSnapshot>>({});
+  const [facultyAvailabilityById, setFacultyAvailabilityById] = useState<Record<number, FacultyAvailabilitySnapshot>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   // const [filters, setFilters] = useState<{ department: string; status: "All" | "Active" | "Inactive" }>({ department: "All", status: "Active" });
@@ -103,7 +121,111 @@ function FacultyTable() {
 
   const [highlightedFacultyId, setHighlightedFacultyId] = useState<number | null>(null);
   const [resettingFacultyId, setResettingFacultyId] = useState<number | null>(null);
+  const [expandedAvailabilityRows, setExpandedAvailabilityRows] = useState<Record<number, boolean>>({});
   const navigate = useNavigate();
+
+  const formatTime12 = (timeStr: string) => {
+    if (!timeStr || !timeStr.includes(":")) return timeStr || "--:--";
+    const [hhRaw, mmRaw] = timeStr.split(":");
+    const hh = Number(hhRaw);
+    const mm = Number(mmRaw);
+    if (!Number.isFinite(hh) || !Number.isFinite(mm)) return timeStr;
+    const period = hh >= 12 ? "PM" : "AM";
+    const hour12 = hh % 12 === 0 ? 12 : hh % 12;
+    return `${hour12}:${String(mm).padStart(2, "0")} ${period}`;
+  };
+
+  const timeToMinutes = (timeStr: string) => {
+    if (!timeStr || !timeStr.includes(":")) return 0;
+    const [hhRaw, mmRaw] = timeStr.split(":");
+    const hh = Number(hhRaw);
+    const mm = Number(mmRaw);
+    if (!Number.isFinite(hh) || !Number.isFinite(mm)) return 0;
+    return hh * 60 + mm;
+  };
+
+  const calculateHoursFromRanges = (ranges: { start: string; end: string }[]) => {
+    return ranges.reduce((sum, slot) => {
+      const mins = Math.max(0, timeToMinutes(slot.end) - timeToMinutes(slot.start));
+      return sum + mins / 60;
+    }, 0);
+  };
+
+  const minutesToTime = (totalMinutes: number) => {
+    const bounded = Math.max(0, Math.min(23 * 60 + 59, totalMinutes));
+    const hh = Math.floor(bounded / 60);
+    const mm = bounded % 60;
+    return `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
+  };
+
+  const subtractRanges = (base: TimeRange[], used: TimeRange[]) => {
+    let remaining = [...base];
+
+    for (const u of used) {
+      const us = timeToMinutes(u.start);
+      const ue = timeToMinutes(u.end);
+      if (ue <= us) continue;
+
+      const next: TimeRange[] = [];
+      for (const r of remaining) {
+        const rs = timeToMinutes(r.start);
+        const re = timeToMinutes(r.end);
+
+        if (re <= rs || ue <= rs || us >= re) {
+          next.push(r);
+          continue;
+        }
+
+        if (us > rs) next.push({ start: r.start, end: minutesToTime(us) });
+        if (ue < re) next.push({ start: minutesToTime(ue), end: r.end });
+      }
+      remaining = next;
+    }
+
+    return remaining.filter((r) => timeToMinutes(r.end) > timeToMinutes(r.start));
+  };
+
+  const buildFreeSlotLines = (
+    availabilityByDay: Record<string, TimeRange[]>,
+    schedules: Array<{ day: string; start_time?: string; end_time?: string; start?: string; end?: string }>
+  ) => {
+    const dayOrder = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+    const dayShort: Record<string, string> = {
+      Monday: "Mon",
+      Tuesday: "Tue",
+      Wednesday: "Wed",
+      Thursday: "Thu",
+      Friday: "Fri",
+      Saturday: "Sat",
+      Sunday: "Sun",
+    };
+
+    const usedByDay: Record<string, TimeRange[]> = {};
+    for (const row of schedules) {
+      const day = row?.day;
+      const start = row?.start_time ?? row?.start ?? "";
+      const end = row?.end_time ?? row?.end ?? "";
+      if (!day || !start || !end) continue;
+      if (!usedByDay[day]) usedByDay[day] = [];
+      usedByDay[day].push({ start, end });
+    }
+
+    for (const day of Object.keys(usedByDay)) {
+      usedByDay[day].sort((a, b) => timeToMinutes(a.start) - timeToMinutes(b.start));
+    }
+
+    const lines: string[] = [];
+    for (const day of dayOrder) {
+      const base = Array.isArray(availabilityByDay?.[day]) ? availabilityByDay[day] : [];
+      const used = usedByDay[day] || [];
+      const free = subtractRanges(base, used);
+      for (const slot of free) {
+        lines.push(`${dayShort[day]} ${formatTime12(slot.start)}-${formatTime12(slot.end)}`);
+      }
+    }
+
+    return lines;
+  };
 
   const fetchFaculty = useCallback(async (forceRefresh = false) => {
     setIsLoading(true);
@@ -138,8 +260,60 @@ function FacultyTable() {
         
         // Only display active faculty
         // const allTransformed = [...activeList.map(transform), ...inactiveList.map(transform)];
-        const allTransformed = activeList.map(transform); 
+        const allTransformed = activeList.map(transform);
         setAllFaculty(allTransformed);
+
+        const loadEntries = await Promise.all(
+          allTransformed.map(async (faculty) => {
+            try {
+              const [schedulesRes, availabilityRes] = await Promise.all([
+                axios.get(`faculty-loading/${faculty.id}/schedules`, {
+                  headers: { Authorization: `Bearer ${token}` },
+                }),
+                axios.get(`/faculties/${faculty.id}/availability`, {
+                  headers: { Authorization: `Bearer ${token}` },
+                }),
+              ]);
+              const availabilityData = availabilityRes?.data || {};
+              const availabilityRanges = Object.values(availabilityData).flatMap((slots: any) =>
+                Array.isArray(slots)
+                  ? slots.map((slot: any) => ({ start: slot?.start ?? "", end: slot?.end ?? "" }))
+                  : []
+              );
+              const availableHours = calculateHoursFromRanges(availabilityRanges);
+
+              const scheduleRows = Array.isArray(schedulesRes?.data?.data)
+                ? schedulesRes.data.data
+                : Array.isArray(schedulesRes?.data)
+                  ? schedulesRes.data
+                  : [];
+              const usedHours = calculateHoursFromRanges(
+                scheduleRows.map((row: any) => ({
+                  start: row?.start_time ?? row?.start ?? "",
+                  end: row?.end_time ?? row?.end ?? "",
+                }))
+              );
+
+              const remainingHours = Math.max(0, availableHours - usedHours);
+              const utilization = availableHours > 0 ? Math.min(100, (usedHours / availableHours) * 100) : 0;
+              const availabilityLines = buildFreeSlotLines(availabilityData, scheduleRows);
+              return [faculty.id, { usedHours, availableHours, remainingHours, utilization, availabilityLines }] as const;
+            } catch {
+              return [faculty.id, { usedHours: 0, availableHours: 0, remainingHours: 0, utilization: 0, availabilityLines: [] }] as const;
+            }
+          })
+        );
+
+        const nextLoadState: Record<number, FacultyLoadSnapshot> = {};
+        const nextAvailabilityState: Record<number, FacultyAvailabilitySnapshot> = {};
+        for (const [facultyId, payload] of loadEntries) {
+          const { availabilityLines, ...loadInfo } = payload;
+          nextLoadState[facultyId] = loadInfo;
+          nextAvailabilityState[facultyId] = { lines: [...availabilityLines] };
+        }
+
+        setFacultyLoadById(nextLoadState);
+        setFacultyAvailabilityById(nextAvailabilityState);
     } catch (error) {
       toast.error("Failed to fetch faculty data.");
       // navigate('/user-login');
@@ -280,6 +454,13 @@ function FacultyTable() {
     setIsModalOpen(true); 
   };
 
+  const toggleAvailabilityRow = (facultyId: number) => {
+    setExpandedAvailabilityRows((prev) => ({
+      ...prev,
+      [facultyId]: !prev[facultyId],
+    }));
+  };
+
   // HANDLERS FOR VIEWING ASSIGNED SUBJECTS (List Icon)
   const handleOpenAssignedViewModal = (facultyMember: Faculty) => {
     setFacultyForViewModal(facultyMember);
@@ -323,6 +504,20 @@ function FacultyTable() {
   }, [filteredData, currentPage, itemsPerPage]);
 
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+  const availabilitySummary = useMemo(() => {
+    return filteredData.reduce(
+      (acc, faculty) => {
+        const row = facultyLoadById[faculty.id];
+        if (!row) return acc;
+        acc.availableHours += row.availableHours;
+        acc.usedHours += row.usedHours;
+        acc.remainingHours += row.remainingHours;
+        if (row.utilization >= 80) acc.nearLimit += 1;
+        return acc;
+      },
+      { availableHours: 0, usedHours: 0, remainingHours: 0, nearLimit: 0 }
+    );
+  }, [filteredData, facultyLoadById]);
   
   // const statuses = ["All", "Active", "Inactive"]; // Commented out: Status filter options removed
   const expertiseOptions = [
@@ -362,6 +557,29 @@ function FacultyTable() {
       </header>
 
       <div className="bg-card p-4 md:p-6 rounded-lg shadow-sm border border-border">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-6">
+          <div className="rounded-lg border border-border p-4 bg-muted/30">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">Total Available</p>
+            <p className="text-2xl font-bold text-foreground">{availabilitySummary.availableHours.toFixed(1)}</p>
+            <p className="text-xs text-muted-foreground">Hours</p>
+          </div>
+          <div className="rounded-lg border border-border p-4 bg-blue-50/40">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">Used Time</p>
+            <p className="text-2xl font-bold text-blue-700">{availabilitySummary.usedHours.toFixed(1)}</p>
+            <p className="text-xs text-muted-foreground">Hours from View Faculty Load</p>
+          </div>
+          <div className="rounded-lg border border-border p-4 bg-emerald-50/40">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">Remaining</p>
+            <p className="text-2xl font-bold text-emerald-700">{availabilitySummary.remainingHours.toFixed(1)}</p>
+            <p className="text-xs text-muted-foreground">Hours still available</p>
+          </div>
+          <div className="rounded-lg border border-border p-4 bg-amber-50/40">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">Near Limit</p>
+            <p className="text-2xl font-bold text-amber-700">{availabilitySummary.nearLimit}</p>
+            <p className="text-xs text-muted-foreground">Faculty at 80%+ utilization</p>
+          </div>
+        </div>
+
         <div className="flex flex-col md:flex-row gap-4 justify-between items-center mb-6">
           <div className="relative w-full md:max-w-xs">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={20} />
@@ -392,6 +610,7 @@ function FacultyTable() {
                 <TableHead className="text-center">Teaching Load</TableHead>
                 <TableHead className="text-center">Deload</TableHead>
                 <TableHead className="text-center">Overload</TableHead>
+                <TableHead className="w-[260px]">Availability Monitor</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right w-[180px]">Actions</TableHead>
               </TableRow>
@@ -400,7 +619,7 @@ function FacultyTable() {
               {isLoading ? (
                 Array.from({ length: itemsPerPage }).map((_, i) => <SkeletonFacultyCard key={i} />)
               ) : paginatedData.length === 0 ? (
-                <TableRow><TableCell colSpan={8} className="text-center h-48 text-muted-foreground">No Faculty Found</TableCell></TableRow>
+                <TableRow><TableCell colSpan={9} className="text-center h-48 text-muted-foreground">No Faculty Found</TableCell></TableRow>
               ) : (
                 paginatedData.map((f) => (
                   <TableRow key={f.id} className={`${highlightedFacultyId === f.id ? 'ring-2 ring-yellow-400 bg-yellow-50' : ''}`}>
@@ -430,6 +649,57 @@ function FacultyTable() {
                     <TableCell className="text-center font-medium">{f.t_load_units}</TableCell>
                     <TableCell className="text-center text-muted-foreground">{f.deload_units}</TableCell>
                     <TableCell className="text-center text-destructive">{f.overload_units}</TableCell>
+                    <TableCell>
+                      {(() => {
+                        const load = facultyLoadById[f.id];
+                        const availability = facultyAvailabilityById[f.id];
+                        if (!load) return <span className="text-xs text-muted-foreground">Loading...</span>;
+                        const utilizationColor = load.utilization >= 80 ? "text-amber-700" : "text-emerald-700";
+                        const allLines = availability?.lines || [];
+                        const isExpanded = !!expandedAvailabilityRows[f.id];
+                        const visibleLines = isExpanded ? allLines : allLines.slice(0, 2);
+                        const remainingLinesCount = Math.max(0, allLines.length - visibleLines.length);
+                        return (
+                          <div className="space-y-1.5">
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="text-muted-foreground">Used {load.usedHours.toFixed(1)}h / {load.availableHours.toFixed(1)}h</span>
+                              <span className={`font-semibold ${utilizationColor}`}>{load.utilization.toFixed(0)}%</span>
+                            </div>
+                            <Progress value={load.utilization} className="h-2" />
+                            <p className="text-[11px] text-muted-foreground">Remaining: {load.remainingHours.toFixed(1)} hours</p>
+                            <div className="pt-1 border-t border-border/70 space-y-0.5">
+                              {visibleLines.length > 0 ? (
+                                <>
+                                  {visibleLines.map((line) => (
+                                    <p key={`${f.id}-${line}`} className="text-[11px] text-foreground leading-tight">{line}</p>
+                                  ))}
+                                  {remainingLinesCount > 0 && (
+                                    <button
+                                      type="button"
+                                      onClick={() => toggleAvailabilityRow(f.id)}
+                                      className="text-[11px] text-primary hover:underline"
+                                    >
+                                      +{remainingLinesCount} more slots
+                                    </button>
+                                  )}
+                                  {isExpanded && allLines.length > 2 && (
+                                    <button
+                                      type="button"
+                                      onClick={() => toggleAvailabilityRow(f.id)}
+                                      className="text-[11px] text-muted-foreground hover:underline"
+                                    >
+                                      Show less
+                                    </button>
+                                  )}
+                                </>
+                              ) : (
+                                <p className="text-[11px] text-muted-foreground">No availability time set</p>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </TableCell>
                     <TableCell>
                       {/* Assuming all faculties listed are now 'Active' */}
                       <Badge variant={'default'}>Active</Badge> 
