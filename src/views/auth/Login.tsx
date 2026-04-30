@@ -128,7 +128,7 @@ const Login: React.FC = () => {
                             <div className="space-y-1.5">
                                 <label className="text-sm font-medium text-white/70 ml-1">Email Address</label>
                                 <div className="relative group">
-                                    <Mail className="absolute top-1/2 left-4 transform -translate-y-1/2 text-white/40 group-focus-within:text-fuchsia-400 transition-colors" size={20} />
+                                    <Mail className="absolute top-1/2 left-4 transform -translate-y-1/2 text-fuchsia-400 group-focus-within:text-fuchsia-400 transition-colors" size={20} />
                                     <Input
                                         type="email"
                                         value={email}
@@ -152,7 +152,7 @@ const Login: React.FC = () => {
                             <div className="space-y-1.5">
                                 <label className="text-sm font-medium text-white/70 ml-1">Password</label>
                                 <div className="relative group">
-                                    <Lock className="absolute top-1/2 left-4 transform -translate-y-1/2 text-white/40 group-focus-within:text-fuchsia-400 transition-colors" size={20} />
+                                    <Lock className="absolute top-1/2 left-4 transform -translate-y-1/2 text-fuchsia-400 group-focus-within:text-fuchsia-400 transition-colors" size={20} />
                                     <Input
                                         type={showPassword ? "text" : "password"}
                                         value={password}
