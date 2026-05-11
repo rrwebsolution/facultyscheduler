@@ -891,7 +891,12 @@ export function AssignSubjectDialog({ isOpen, onClose, faculty, availableSubject
                                     onClick={handleSearchClick}
                                     disabled={isSearchingSubject || !searchQuery.trim()}
                                 >
-                                    {isSearchingSubject ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Search"}
+                                    {isSearchingSubject ? (
+                                        <>
+                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                            Searching
+                                        </>
+                                    ) : "Search"}
                                 </Button>
                             </div>
                             <div className="flex-grow overflow-y-auto space-y-2 -mr-2 pr-2">
@@ -920,10 +925,19 @@ export function AssignSubjectDialog({ isOpen, onClose, faculty, availableSubject
                                             )
                                         })
                                     ) : (
-                                    <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground rounded-lg bg-background border-2 border-dashed p-4">
-                                        <Loader2 className="h-8 w-8 mb-2" />
-                                        <p className="text-sm">
-                                            {isSearchingSubject ? "Searching..." : (searchQuery ? "No subjects found." : "Enter a subject to search.")}
+                                    <div className="flex flex-col items-center justify-center h-full min-h-64 text-center text-muted-foreground rounded-lg bg-muted/20 border-2 border-dashed p-5">
+                                        <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+                                            {isSearchingSubject ? (
+                                                <Loader2 className="h-6 w-6 animate-spin" />
+                                            ) : (
+                                                <Search className="h-6 w-6" />
+                                            )}
+                                        </div>
+                                        <p className="text-sm font-medium text-foreground">
+                                            {isSearchingSubject ? "Searching subjects..." : (searchQuery ? "No matching subjects found." : "Search for a subject first.")}
+                                        </p>
+                                        <p className="mt-1 max-w-48 text-xs text-muted-foreground">
+                                            {isSearchingSubject ? "Please wait while subjects are being loaded." : (searchQuery ? "Try another subject code or title." : "Enter a subject code or title, then click Search.")}
                                         </p>
                                     </div>
                                 )}

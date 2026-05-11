@@ -212,14 +212,28 @@ const ScheduleClassModal: React.FC<ScheduleModalProps> = ({ onClose, subject, co
   const [instructor, setInstructor] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [section, setSection] = useState('');
-  const [selectedRoomId, setSelectedRoomId] = useState<string>('');
+  const [selectedLectureRoomId, setSelectedLectureRoomId] = useState<string>('');
+  const [selectedLabRoomId, setSelectedLabRoomId] = useState<string>('');
 
   const handleSubmit = async () => {
     // FIX: Extract start_time, end_time, and type from the 'time' value
     const [startTime, endTime ] = time.split('|');
 
-    if (!dayPair || !startTime || !endTime || !instructor || !section || !selectedRoomId) {
-      toast.error('Please fill all required fields (Room, Day, Time, Instructor, Section).');
+    const needsLecture = subject.lec_units && subject.lec_units > 0;
+    const needsLab = subject.lab_units && subject.lab_units > 0;
+
+    if (!dayPair || !startTime || !endTime || !instructor || !section) {
+      toast.error('Please fill all required fields (Day, Time, Instructor, Section).');
+      return;
+    }
+
+    if (needsLecture && !selectedLectureRoomId) {
+      toast.error('Please select a Lecture Room.');
+      return;
+    }
+
+    if (needsLab && !selectedLabRoomId) {
+      toast.error('Please select a Laboratory Room.');
       return;
     }
 
@@ -232,7 +246,7 @@ const ScheduleClassModal: React.FC<ScheduleModalProps> = ({ onClose, subject, co
         dayPair: dayPair as ComponentClassSchedule['dayPair'],
         time: `${startTime}-${endTime}`, // Format used by the main component's logic
         instructor,
-        roomId: selectedRoomId, // Fixed: Use the selectedRoomId
+        roomId: selectedLectureRoomId || selectedLabRoomId, // Use available room
         // Assuming other fields like faculty_id, type etc. are handled in the parent/API call
       });
       toast.success('Class scheduled (local state updated).');
@@ -250,17 +264,22 @@ const ScheduleClassModal: React.FC<ScheduleModalProps> = ({ onClose, subject, co
     return facultyLoadingData.filter(l => l.subject_id.toString() === subject.id.toString());
   }, [subject, facultyLoadingData]);
 
-  // FIX: Use the 'rooms' prop directly for available rooms instead of filtering loads
-  const availableRooms = React.useMemo(() => {
-    return rooms.map(r => ({ ...r, id: r.id.toString() })); // Convert ID to string for Select component
+  // FIX: Filter rooms by type - Lecture and Laboratory
+  const availableLectureRooms = React.useMemo(() => {
+    return rooms.filter(r => r.type === 'Lecture').map(r => ({ ...r, id: r.id.toString() }));
+  }, [rooms]);
+
+  const availableLabRooms = React.useMemo(() => {
+    return rooms.filter(r => r.type === 'Laboratory').map(r => ({ ...r, id: r.id.toString() }));
   }, [rooms]);
 
   const availableDays = React.useMemo(() => {
-    if (!selectedRoomId) return [] as string[];
-    // Find loads for the selected subject AND room
-    const roomLoads = selectedSubjectLoads.filter(l => l.room.id.toString() === selectedRoomId);
+    if (!selectedLectureRoomId && !selectedLabRoomId) return [] as string[];
+    // Find loads for the selected subject AND room(s)
+    const selectedRoomIds = [selectedLectureRoomId, selectedLabRoomId].filter(Boolean);
+    const roomLoads = selectedSubjectLoads.filter(l => selectedRoomIds.includes(l.room.id.toString()));
     return Array.from(new Set(roomLoads.map(l => l.day)));
-  }, [selectedSubjectLoads, selectedRoomId]);
+  }, [selectedSubjectLoads, selectedLectureRoomId, selectedLabRoomId]);
 
   const formatTime12Hour = (time: string) => {
     if(!time) return "";
@@ -272,15 +291,16 @@ const ScheduleClassModal: React.FC<ScheduleModalProps> = ({ onClose, subject, co
   };
 
   const availableTimeSlots = React.useMemo(() => {
-    if (!selectedRoomId || !dayPair) return [] as any[];
+    if ((!selectedLectureRoomId && !selectedLabRoomId) || !dayPair) return [] as any[];
     // Filter loads by selected room and dayPair (the day, e.g., 'Mon')
-    const relevant = selectedSubjectLoads.filter(l => l.room.id.toString() === selectedRoomId && l.day === dayPair);
+    const selectedRoomIds = [selectedLectureRoomId, selectedLabRoomId].filter(Boolean);
+    const relevant = selectedSubjectLoads.filter(l => selectedRoomIds.includes(l.room.id.toString()) && l.day === dayPair);
     return relevant.map(load => ({ 
         value: `${load.start_time.substring(0,5)}|${load.end_time.substring(0,5)}|${load.type}`, 
         display: `${formatTime12Hour(load.start_time)} - ${formatTime12Hour(load.end_time)} (${load.type})`, 
         type: load.type 
     }));
-  }, [selectedSubjectLoads, selectedRoomId, dayPair]);
+  }, [selectedSubjectLoads, selectedLectureRoomId, selectedLabRoomId, dayPair]);
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
@@ -329,14 +349,26 @@ const ScheduleClassModal: React.FC<ScheduleModalProps> = ({ onClose, subject, co
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label className="text-sm">Available Room <span className="text-red-500">*</span></Label>
-              <Select value={selectedRoomId} onValueChange={(v) => setSelectedRoomId(v)} disabled={availableRooms.length === 0}>
-                <SelectTrigger><SelectValue placeholder={availableRooms.length ? 'Select a room' : 'No rooms'} /></SelectTrigger>
+              <Label className="text-sm">Lecture Room {subject.lec_units && subject.lec_units > 0 ? <span className="text-red-500">*</span> : ''}</Label>
+              <Select value={selectedLectureRoomId} onValueChange={(v) => setSelectedLectureRoomId(v)} disabled={availableLectureRooms.length === 0}>
+                <SelectTrigger><SelectValue placeholder={availableLectureRooms.length ? 'Select lecture room' : 'No lecture rooms'} /></SelectTrigger>
                 <SelectContent>
-                  {availableRooms.map(r => <SelectItem key={r.id} value={r.id.toString()}>{r.roomNumber} ({r.type})</SelectItem>)}
+                  {availableLectureRooms.map(r => <SelectItem key={r.id} value={r.id.toString()}>{r.roomNumber} (Lecture)</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-2">
+              <Label className="text-sm">Laboratory Room {subject.lab_units && subject.lab_units > 0 ? <span className="text-red-500">*</span> : ''}</Label>
+              <Select value={selectedLabRoomId} onValueChange={(v) => setSelectedLabRoomId(v)} disabled={availableLabRooms.length === 0}>
+                <SelectTrigger><SelectValue placeholder={availableLabRooms.length ? 'Select lab room' : 'No lab rooms'} /></SelectTrigger>
+                <SelectContent>
+                  {availableLabRooms.map(r => <SelectItem key={r.id} value={r.id.toString()}>{r.roomNumber} (Laboratory)</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label className="text-sm">Day <span className="text-red-500">*</span></Label>
               <Select value={dayPair} onValueChange={setDayPair} disabled={availableDays.length === 0}>
@@ -346,6 +378,7 @@ const ScheduleClassModal: React.FC<ScheduleModalProps> = ({ onClose, subject, co
                 </SelectContent>
               </Select>
             </div>
+            <div></div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -369,7 +402,13 @@ const ScheduleClassModal: React.FC<ScheduleModalProps> = ({ onClose, subject, co
 
         <DialogFooter>
           <DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose>
-          <Button onClick={handleSubmit} disabled={isSubmitting || !selectedRoomId || !dayPair || !time || !instructor || !section}>{isSubmitting ? 'Saving...' : 'Confirm Schedule'}</Button>
+          <Button 
+            onClick={handleSubmit} 
+            disabled={isSubmitting || !dayPair || !time || !instructor || !section || 
+              (subject.lec_units && subject.lec_units > 0 && !selectedLectureRoomId) || 
+              (subject.lab_units && subject.lab_units > 0 && !selectedLabRoomId)}>
+            {isSubmitting ? 'Saving...' : 'Confirm Schedule'}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
