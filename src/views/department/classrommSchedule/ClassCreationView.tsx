@@ -404,9 +404,9 @@ const ScheduleClassModal: React.FC<ScheduleModalProps> = ({ onClose, subject, co
           <DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose>
           <Button 
             onClick={handleSubmit} 
-            disabled={isSubmitting || !dayPair || !time || !instructor || !section || 
-              (subject.lec_units && subject.lec_units > 0 && !selectedLectureRoomId) || 
-              (subject.lab_units && subject.lab_units > 0 && !selectedLabRoomId)}>
+            disabled={isSubmitting || !dayPair || !time || !instructor || !section ||
+              !!(subject.lec_units && subject.lec_units > 0 && !selectedLectureRoomId) ||
+              !!(subject.lab_units && subject.lab_units > 0 && !selectedLabRoomId)}>
             {isSubmitting ? 'Saving...' : 'Confirm Schedule'}
           </Button>
         </DialogFooter>
