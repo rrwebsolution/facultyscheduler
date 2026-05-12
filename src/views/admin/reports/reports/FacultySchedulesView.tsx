@@ -4,7 +4,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Calendar, Loader2, Search, Building2, GraduationCap, Grid3x3 } from "lucide-react";
+import { Calendar, Clock, Loader2, MapPin, Search, Building2, GraduationCap, Grid3x3, User } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 
 
@@ -63,8 +63,21 @@ interface YearLevelScheduleViewProps {
 
 // --- CONSTANTS & UTILITY FUNCTIONS (1-Hour Slots, Dynamic Height) ---
 
-const ROW_HEIGHT_PIXELS = 64; // Tailwind h-24 is 96px, suitable for 1-hour slots
+const REPORT_TIME_COLUMN_WIDTH_PIXELS = 50;
+const REPORT_COLUMN_WIDTH_PIXELS = 124;
+const ROW_HEIGHT_PIXELS = 72; // Matches the class schedule grid's hourly row height.
 const SLOT_INTERVAL_MIN = 60; // 60 minutes interval (1 hour)
+
+const reportSubjectColors = [
+    { bg: 'bg-blue-50 hover:bg-blue-100', border: 'border-blue-500', text: 'text-blue-700', badge: 'bg-white/60 text-slate-700' },
+    { bg: 'bg-emerald-50 hover:bg-emerald-100', border: 'border-emerald-500', text: 'text-emerald-700', badge: 'bg-white/60 text-slate-700' },
+    { bg: 'bg-violet-50 hover:bg-violet-100', border: 'border-violet-500', text: 'text-violet-700', badge: 'bg-white/60 text-slate-700' },
+    { bg: 'bg-amber-50 hover:bg-amber-100', border: 'border-amber-500', text: 'text-amber-700', badge: 'bg-white/60 text-slate-700' },
+    { bg: 'bg-rose-50 hover:bg-rose-100', border: 'border-rose-500', text: 'text-rose-700', badge: 'bg-white/60 text-slate-700' },
+    { bg: 'bg-cyan-50 hover:bg-cyan-100', border: 'border-cyan-500', text: 'text-cyan-700', badge: 'bg-white/60 text-slate-700' },
+];
+
+const getReportSubjectColor = (subjectId: number) => reportSubjectColors[subjectId % reportSubjectColors.length];
 
 const to12Hour = (minutes: number) => {
     const hh = Math.floor(minutes / 60);
@@ -144,6 +157,7 @@ const transformToRoomGrid = (data: ClassSchedule[]): ScheduleGridData => {
         const section = schedule.section;
         const classType = loading.type;
         const timePeriod = `${formatTime(loading.start_time)}-${formatTime(loading.end_time)}`;
+        const style = getReportSubjectColor(loading.subject.id);
 
         const classStartTime24 = loading.start_time.substring(0, 5);
         const classEndTime24 = loading.end_time.substring(0, 5);
@@ -169,18 +183,30 @@ const transformToRoomGrid = (data: ClassSchedule[]): ScheduleGridData => {
 
                 const cellContent = (
                     <div 
-                        style={{ height: `${contentHeight}px`, marginTop: '0px' }} // Set dynamic height
-                        className={`absolute w-full top-0 left-0 text-center flex flex-col justify-center p-1.5 bg-green-100/80 border-2 border-green-300 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 cursor-pointer z-10`}
+                        style={{ height: `${contentHeight}px`, marginTop: '0px' }}
+                        className="absolute w-full top-0 left-0 px-1.5 z-10"
                     >
-                        <span className="font-extrabold uppercase text-sm text-green-800 leading-tight block">
-                            {subjectCode} {section}
-                        </span>
-                        <span className="text-xs font-medium text-gray-700 mt-1 block">
-                            {facultyName}
-                        </span>
-                        <span className="text-xs text-green-700/80 mt-0.5 block">
-                            {loading.day} | {timePeriod} | {loading.room.roomNumber} | {classType}
-                        </span>
+                        <div className={`rounded-lg p-2.5 h-full flex flex-col justify-between overflow-hidden ${style.bg} ${style.border} border-l-[3px] shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer`}>
+                            <div>
+                                <div className={`font-bold text-xs leading-tight mb-0.5 ${style.text}`}>{subjectCode} {section}</div>
+                                <div className="text-[10px] text-slate-600 line-clamp-2 leading-tight">{loading.subject.des_title}</div>
+                            </div>
+                            <div className="mt-1 pt-1.5 border-t border-black/5 flex flex-col justify-end items-start text-[9px] font-semibold text-slate-500 space-y-1">
+                                <div className="flex items-center gap-1.5">
+                                    <User className="w-3 h-3 text-slate-400" />
+                                    <span className="text-slate-700 line-clamp-1">{facultyName}</span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                    <MapPin className="w-3 h-3 text-slate-400" />
+                                    <span className="text-slate-700">{loading.room.roomNumber}</span>
+                                    <span className={`${style.badge} px-1 rounded text-xs font-bold uppercase`}>{classType}</span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                    <Clock className="w-3 h-3 text-slate-400" />
+                                    <span>{loading.day} | {timePeriod}</span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 );
 
@@ -214,6 +240,7 @@ const transformToSectionGrid = (data: ClassSchedule[]): ScheduleGridData => {
         const roomNumber = loading.room.roomNumber;
         const classType = loading.type;
         const timePeriod = `${formatTime(loading.start_time)}-${formatTime(loading.end_time)}`;
+        const style = getReportSubjectColor(loading.subject.id);
 
         const classStartTime24 = loading.start_time.substring(0, 5);
         const classEndTime24 = loading.end_time.substring(0, 5);
@@ -237,18 +264,30 @@ const transformToSectionGrid = (data: ClassSchedule[]): ScheduleGridData => {
                 
                 const cellContent = (
                     <div 
-                         style={{ height: `${contentHeight}px`, marginTop: '0px' }} // Set dynamic height
-                        className={`absolute w-full top-0 left-0 text-center flex flex-col justify-center p-1.5 bg-blue-100/80 border-2 border-blue-300 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 cursor-pointer z-10`}
+                         style={{ height: `${contentHeight}px`, marginTop: '0px' }}
+                        className="absolute w-full top-0 left-0 px-1.5 z-10"
                     >
-                        <span className="font-extrabold uppercase text-sm text-blue-800 leading-tight block">
-                            {subjectCode} ({classType})
-                        </span>
-                        <span className="text-xs font-medium text-gray-700 mt-1 block">
-                            {facultyName}
-                        </span>
-                        <span className="text-xs text-blue-700/80 mt-0.5 block">
-                            {loading.day} | {timePeriod} | {roomNumber}
-                        </span>
+                        <div className={`rounded-lg p-2.5 h-full flex flex-col justify-between overflow-hidden ${style.bg} ${style.border} border-l-[3px] shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer`}>
+                            <div>
+                                <div className={`font-bold text-xs leading-tight mb-0.5 ${style.text}`}>{subjectCode}</div>
+                                <div className="text-[10px] text-slate-600 line-clamp-2 leading-tight">{loading.subject.des_title}</div>
+                            </div>
+                            <div className="mt-1 pt-1.5 border-t border-black/5 flex flex-col justify-end items-start text-[9px] font-semibold text-slate-500 space-y-1">
+                                <div className="flex items-center gap-1.5">
+                                    <User className="w-3 h-3 text-slate-400" />
+                                    <span className="text-slate-700 line-clamp-1">{facultyName}</span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                    <MapPin className="w-3 h-3 text-slate-400" />
+                                    <span className="text-slate-700">{roomNumber}</span>
+                                    <span className={`${style.badge} px-1 rounded text-xs font-bold uppercase`}>{classType}</span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                    <Clock className="w-3 h-3 text-slate-400" />
+                                    <span>{loading.day} | {timePeriod}</span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 );
 
@@ -287,7 +326,7 @@ function RoomScheduleView({
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.2 }}
-                className="bg-card p-4 md:p-6 rounded-xl shadow-2xl border-2 border-border overflow-x-auto"
+                className="bg-white p-4 md:p-6 rounded-xl shadow-sm border border-slate-200 overflow-x-auto"
             >
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 border-b pb-4 gap-4">
                     <h3 className="text-xl font-semibold text-gray-700 flex items-center">
@@ -337,14 +376,14 @@ function RoomScheduleView({
                 </div>
                 
                 <div>
-                    <Table className="w-full table-fixed border-collapse border-primary/20">
-                        <TableHeader className="bg-primary sticky top-0 z-50 shadow-lg">
+                    <Table className="w-full table-fixed border-collapse border-slate-200">
+                        <TableHeader className="bg-slate-100/50 sticky top-0 z-50 shadow-sm">
                             <TableRow>
-                                <TableHead className="w-[150px] border-r border-b border-primary-foreground/30 text-center font-extrabold text-primary-foreground text-sm uppercase">
+                                <TableHead className="h-[3.5rem] border-r border-b border-slate-200 bg-slate-100/50 text-center font-bold text-slate-600 text-xs uppercase tracking-wider" style={{ width: `${REPORT_TIME_COLUMN_WIDTH_PIXELS}px` }}>
                                     Time Slot
                                 </TableHead>
                                 {rooms.map((room: string) => (
-                                    <TableHead key={room} className="w-[150px] border-r border-b border-primary-foreground/30 text-center font-extrabold whitespace-nowrap text-primary-foreground text-sm uppercase">
+                                    <TableHead key={room} className="h-[3.5rem] border-r border-b border-slate-200 text-center font-bold whitespace-nowrap text-blue-800 text-xs uppercase tracking-wider bg-blue-100/70" style={{ width: `${REPORT_COLUMN_WIDTH_PIXELS}px` }}>
                                         {room}
                                     </TableHead>
                                 ))}
@@ -353,9 +392,11 @@ function RoomScheduleView({
                         
                         <TableBody>
                             {TIME_SLOTS.map((timeSlot) => (
-                                <TableRow key={timeSlot} className="h-16 border-b border-gray-200 hover:bg-muted/50 transition-colors duration-200"> 
-                                    <TableCell className="w-[150px] border-r border-r-gray-300 align-middle p-2 font-bold text-xs whitespace-pre-line bg-muted/40 text-gray-700 sticky left-0 z-5">
-                                        {timeSlot}
+                                <TableRow key={timeSlot} className="h-[72px] border-b border-slate-300 hover:bg-slate-50/70 transition-colors duration-200"> 
+                                    <TableCell className="border-r border-r-slate-200 align-top p-0 bg-slate-50/80 sticky left-0 z-5 relative" style={{ width: `${REPORT_TIME_COLUMN_WIDTH_PIXELS}px` }}>
+                                        <span className="absolute right-3 top-0 -translate-y-1/2 bg-slate-50/80 px-1 font-semibold text-[11px] text-slate-400 whitespace-nowrap">
+                                            {timeSlot}
+                                        </span>
                                     </TableCell>
 
                                     {rooms.map((room: string) => {
@@ -366,7 +407,8 @@ function RoomScheduleView({
                                             return (
                                                  <TableCell
                                                     key={key}
-                                                    className="w-[150px] border-r border-r-gray-300 align-top p-0 text-center text-sm border-dashed border-gray-300 bg-background/50 relative"
+                                                    className="border-r border-r-slate-300 align-top p-0 text-center text-sm bg-white relative"
+                                                    style={{ width: `${REPORT_COLUMN_WIDTH_PIXELS}px` }}
                                                 >
                                                 </TableCell>
                                             );
@@ -376,7 +418,8 @@ function RoomScheduleView({
                                             return (
                                                 <TableCell
                                                     key={key}
-                                                    className="w-[150px] border-r border-r-gray-300 align-top p-0 text-center text-sm relative" // IMPORTANT: relative container
+                                                    className="border-r border-r-slate-300 align-top p-0 text-center text-sm relative" // IMPORTANT: relative container
+                                                    style={{ width: `${REPORT_COLUMN_WIDTH_PIXELS}px` }}
                                                 >
                                                     {entry.content} 
                                                 </TableCell>
@@ -386,7 +429,8 @@ function RoomScheduleView({
                                         return (
                                             <TableCell
                                                 key={key}
-                                                className="w-[150px] border-r border-r-gray-300 align-top p-0 text-center text-sm border-dashed border-gray-300 bg-background/50 relative"
+                                                className="border-r border-r-slate-300 align-top p-0 text-center text-sm bg-white relative"
+                                                style={{ width: `${REPORT_COLUMN_WIDTH_PIXELS}px` }}
                                             >
                                             
                                             </TableCell>
@@ -457,7 +501,7 @@ function YearLevelScheduleView({ backendData }: YearLevelScheduleViewProps) {
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 20 }}
                 transition={{ duration: 0.2 }}
-                className="bg-card p-4 md:p-6 rounded-xl shadow-2xl border-2 border-border overflow-x-auto"
+                className="bg-white p-4 md:p-6 rounded-xl shadow-sm border border-slate-200 overflow-x-auto"
             >
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 border-b pb-4 gap-4">
                     <h3 className="text-xl font-semibold text-gray-700 flex items-center">
@@ -510,14 +554,14 @@ function YearLevelScheduleView({ backendData }: YearLevelScheduleViewProps) {
                 </div>
 
                 <div>
-                    <Table className="w-full table-fixed border-collapse border-primary/20">
-                        <TableHeader className="bg-primary sticky top-0 z-50 shadow-lg">
+                    <Table className="w-full table-fixed border-collapse border-slate-200">
+                        <TableHeader className="bg-slate-100/50 sticky top-0 z-50 shadow-sm">
                             <TableRow>
-                                <TableHead className="w-[150px] border-r border-b border-primary-foreground/30 text-center font-extrabold text-primary-foreground text-sm uppercase">
+                                <TableHead className="h-[3.5rem] border-r border-b border-slate-200 bg-slate-100/50 text-center font-bold text-slate-600 text-xs uppercase tracking-wider" style={{ width: `${REPORT_TIME_COLUMN_WIDTH_PIXELS}px` }}>
                                     Time Slot
                                 </TableHead>
                                 {columns.map((columnKey) => (
-                                    <TableHead key={columnKey} className="w-[150px] border-r border-b border-primary-foreground/30 text-center font-extrabold whitespace-nowrap text-primary-foreground text-sm uppercase">
+                                    <TableHead key={columnKey} className="h-[3.5rem] border-r border-b border-slate-200 text-center font-bold whitespace-nowrap text-blue-800 text-xs uppercase tracking-wider bg-blue-100/70" style={{ width: `${REPORT_COLUMN_WIDTH_PIXELS}px` }}>
                                         {columnKey.replace('-', ' - Section ')}
                                     </TableHead>
                                 ))}
@@ -526,9 +570,11 @@ function YearLevelScheduleView({ backendData }: YearLevelScheduleViewProps) {
                         
                         <TableBody>
                             {TIME_SLOTS.map((timeSlot) => (
-                                <TableRow key={timeSlot} className="h-16 border-b border-gray-200 hover:bg-muted/50 transition-colors duration-200">
-                                    <TableCell className="w-[150px] border-r border-r-gray-300 align-middle p-2 font-bold text-xs whitespace-pre-line bg-muted/40 text-gray-700 sticky left-0 z-5">
-                                        {timeSlot}
+                                <TableRow key={timeSlot} className="h-[72px] border-b border-slate-300 hover:bg-slate-50/70 transition-colors duration-200">
+                                    <TableCell className="border-r border-r-slate-200 align-top p-0 bg-slate-50/80 sticky left-0 z-5 relative" style={{ width: `${REPORT_TIME_COLUMN_WIDTH_PIXELS}px` }}>
+                                        <span className="absolute right-3 top-0 -translate-y-1/2 bg-slate-50/80 px-1 font-semibold text-[11px] text-slate-400 whitespace-nowrap">
+                                            {timeSlot}
+                                        </span>
                                     </TableCell>
 
                                     {columns.map((columnKey: string) => {
@@ -539,7 +585,8 @@ function YearLevelScheduleView({ backendData }: YearLevelScheduleViewProps) {
                                             return (
                                                 <TableCell
                                                     key={key}
-                                                    className="w-[150px] border-r border-r-gray-300 align-top p-0 text-center text-sm border-dashed border-gray-300 bg-background/50 relative"
+                                                    className="border-r border-r-slate-300 align-top p-0 text-center text-sm bg-white relative"
+                                                    style={{ width: `${REPORT_COLUMN_WIDTH_PIXELS}px` }}
                                                 >
                                                 </TableCell>
                                             );
@@ -549,7 +596,8 @@ function YearLevelScheduleView({ backendData }: YearLevelScheduleViewProps) {
                                             return (
                                                 <TableCell
                                                     key={key}
-                                                    className="w-[150px] border-r border-r-gray-300 align-top p-0 text-center text-sm relative" // IMPORTANT: relative container
+                                                    className="border-r border-r-slate-300 align-top p-0 text-center text-sm relative" // IMPORTANT: relative container
+                                                    style={{ width: `${REPORT_COLUMN_WIDTH_PIXELS}px` }}
                                                 >
                                                     {entry.content}
                                                 </TableCell>
@@ -559,7 +607,8 @@ function YearLevelScheduleView({ backendData }: YearLevelScheduleViewProps) {
                                         return (
                                             <TableCell
                                                 key={key}
-                                                className="w-[150px] border-r border-r-gray-300 align-top p-0 text-center text-sm border-dashed border-gray-300 bg-background/50 relative"
+                                                className="border-r border-r-slate-300 align-top p-0 text-center text-sm bg-white relative"
+                                                style={{ width: `${REPORT_COLUMN_WIDTH_PIXELS}px` }}
                                             >
                                                
                                             </TableCell>

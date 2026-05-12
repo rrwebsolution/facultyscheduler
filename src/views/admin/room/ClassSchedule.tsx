@@ -11,7 +11,6 @@ import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
 import type { FacultyLoadEntry, Room, ScheduleEntry, SectionEntry, Subject } from './classroom'; 
 import axios from '../../../plugin/axios';
 import { isAxiosError } from 'axios';
@@ -793,6 +792,14 @@ const ClassSchedule: React.FC<Props> = ({
                         
                         <div className="h-[3.5rem] border-b border-slate-200 bg-slate-100/50"></div>
 
+                        {Array.from({ length: TOTAL_HOURS }).map((_, i) => (
+                            <div
+                                key={`time-line-${i}`}
+                                className="absolute w-full border-b border-slate-300"
+                                style={{ top: `${HEADER_HEIGHT_REM + ((i + 1) * HOUR_HEIGHT_REM)}rem` }}
+                            ></div>
+                        ))}
+
                         {Array.from({ length: TOTAL_HOURS + 1 }).map((_, i) => {
                             const hour = START_HOUR + i;
                             const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
@@ -802,7 +809,7 @@ const ClassSchedule: React.FC<Props> = ({
                             return (
                                 <div 
                                     key={hour} 
-                                    className="absolute right-3 text-[11px] font-semibold text-slate-400 translate-y-1.5" 
+                                    className="absolute right-3 -translate-y-1/2 bg-slate-50/80 px-1 text-[11px] font-semibold text-slate-400" 
                                     style={{ top: `${topPosition}rem` }}
                                 >
                                     {displayHour}:00 {ampm}
@@ -897,99 +904,121 @@ const ClassSchedule: React.FC<Props> = ({
     // --- END RENDER GRID ---
 
     return (
+       
         <div className="space-y-6">
             {/* TOOLBAR */}
-            <Card className="border-none shadow-sm bg-slate-50/50">
-                <CardContent className="p-4 flex flex-col md:flex-row gap-6 items-end md:items-center justify-between">
-                    <div className="w-full md:w-auto flex items-end justify-start gap-4 flex-wrap">
-                        
-                        {/* Filter Program (NEW) */}
-                        <div className="w-44 sm:w-48 space-y-1.5">
-                            <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wide flex items-center gap-1.5">
-                                <Filter className="w-3 h-3" /> Filter Program
-                            </Label>
-                            <Select onValueChange={handleProgramSelectChange} value={selectedProgramId} disabled={isProgramsLoading}>
-                                <SelectTrigger className="h-10 bg-white border-slate-200 focus:ring-slate-200 transition-shadow">
-                                    <SelectValue placeholder={isProgramsLoading ? "Loading Programs..." : "Select Program"} />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {programsData.map(program => (
-                                        <SelectItem key={program.id} value={program.id.toString()}>
-                                            {/* Display program_name (abbreviation) */}
-                                            {program.program_name} ({program.abbreviation})
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
+            <div className="p-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm transition-colors duration-200">
+    <div className="flex flex-col xl:flex-row justify-between items-start xl:items-end gap-6">
+        
+        {/* LEFT: Inline Filters Block */}
+        <div className="flex flex-col md:flex-row items-start md:items-end gap-4 w-full xl:w-auto">
+            
+            {/* Filter Dropdowns */}
+            <div className="flex flex-col sm:flex-row items-start gap-3 w-full md:w-auto">
+                {/* Filter Program */}
+                <div className="w-full sm:w-60 flex flex-col shrink-0">
+                    <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5 flex items-center gap-1.5 pl-0.5">
+                        <Filter className="w-3 h-3 text-slate-400 dark:text-slate-500" /> Program
+                    </span>
+                    <Select onValueChange={handleProgramSelectChange} value={selectedProgramId} disabled={isProgramsLoading}>
+                        <SelectTrigger className="h-10 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:ring-indigo-500 dark:focus:ring-indigo-400 shadow-sm transition-shadow">
+                            <SelectValue placeholder={isProgramsLoading ? "Loading..." : "Select Program"} />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {programsData.map(program => (
+                                <SelectItem key={program.id} value={program.id.toString()}>
+                                    {program.program_name} ({program.abbreviation})
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
 
-                        {/* Filter Year */}
-                        <div className="w-44 sm:w-48 space-y-1.5">
-                            <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wide flex items-center gap-1.5">
-                                <Calendar className="w-3 h-3" /> Filter Year
-                            </Label>
-                            <Select onValueChange={handleYearLevelSelectChange} value={selectedYearLevel} disabled={!selectedProgramId}>
-                                <SelectTrigger className="h-10 bg-white border-slate-200 focus:ring-slate-200 transition-shadow">
-                                    <SelectValue placeholder="Select Year" />
-                                </SelectTrigger>
-                                <SelectContent>{YEAR_LEVELS.map(year => <SelectItem key={year} value={year.toString()}>{getYearLabel(year)}</SelectItem>)}</SelectContent>
-                            </Select>
-                        </div>
+                {/* Filter Year */}
+                <div className="w-full sm:w-36 flex flex-col shrink-0">
+                    <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5 flex items-center gap-1.5 pl-0.5">
+                        <Calendar className="w-3 h-3 text-slate-400 dark:text-slate-500" /> Year Level
+                    </span>
+                    <Select onValueChange={handleYearLevelSelectChange} value={selectedYearLevel} disabled={!selectedProgramId}>
+                        <SelectTrigger className="h-10 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:ring-indigo-500 dark:focus:ring-indigo-400 shadow-sm transition-shadow">
+                            <SelectValue placeholder="Select Year" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {YEAR_LEVELS.map(year => (
+                                <SelectItem key={year} value={year.toString()}>
+                                    {getYearLabel(year)}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
 
-                        {/* Filter Section */}
-                        <div className="w-44 sm:w-48 space-y-1.5">
-                            <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Filter Section</Label>
-                            <Select onValueChange={setSelectedSection} value={selectedSection} disabled={!selectedYearLevel || !selectedProgramId}>
-                                <SelectTrigger className="h-10 bg-white border-slate-200 focus:ring-slate-200 transition-shadow">
-                                    <SelectValue placeholder="Select Section" />
-                                </SelectTrigger>
-                                <SelectContent>{viewSections.map(sec => <SelectItem key={sec} value={sec}>{sec}</SelectItem>)}</SelectContent>
-                            </Select>
-                        </div>
+                {/* Filter Section */}
+                <div className="w-full sm:w-36 flex flex-col shrink-0">
+                    <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5 flex items-center gap-1.5 pl-0.5">
+                        <Tag className="w-3 h-3 text-slate-400 dark:text-slate-500" /> Section
+                    </span>
+                    <Select onValueChange={setSelectedSection} value={selectedSection} disabled={!selectedYearLevel || !selectedProgramId}>
+                        <SelectTrigger className="h-10 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:ring-indigo-500 dark:focus:ring-indigo-400 shadow-sm transition-shadow">
+                            <SelectValue placeholder="Select Section" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {viewSections.map(sec => (
+                                <SelectItem key={sec} value={sec}>{sec}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+            </div>
 
-                        {/* Apply Filter Button */}
-                        <div className="flex items-end">
-                            <Button
-                                onClick={handleApplyFilter}
-                                disabled={!selectedYearLevel || !selectedSection || !selectedProgramId || isFilterLoading || isProgramsLoading}
-                                className="h-10 shadow-md transition-all px-4"
-                                title="Apply selected filters to the schedule grid"
-                            >
-                                {isFilterLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="h-4 w-4 mr-2" />}
-                                {isFilterLoading ? "Loading..." : "Apply Filter"}
-                            </Button>
-                        </div>
-                        <div className="flex items-end">
-                            <Button
-                                onClick={handleClearFilter}
-                                disabled={isFilterLoading}
-                                variant="outline"
-                                className="h-10 px-4"
-                                title="Clear Program, Year, and Section filters"
-                            >
-                                Clear
-                            </Button>
-                        </div>
-                    </div>
-                    
-                    <div className="flex items-center gap-3">
-                        {/* Download PDF Button */}
-                        <Button 
-                            onClick={handleDownloadPDF} 
-                            disabled={!viewYearLevel || !viewSection || !viewProgramId}
-                            className="h-10 shadow-md transition-all" 
-                            variant="outline"
-                        >
-                            <Download className="mr-2 h-4 w-4" /> Download PDF
-                        </Button>
+            {/* Vertical Divider (Hidden on small screens) */}
+            <div className="hidden md:block h-10 w-px bg-slate-200 dark:bg-slate-800 shrink-0 mx-1"></div>
 
-                        {/* Add Class Schedule Button */}
-                        <Button onClick={handleOpenAddClass} className="shadow-md hover:shadow-lg transition-all" disabled={isProgramsLoading}>
-                            <Plus className="mr-2 h-4 w-4" /> Add Class Schedule
-                        </Button>
-                    </div>
-                </CardContent>
-            </Card>
+            {/* Filter Action Buttons */}
+            <div className="flex items-center gap-2 w-full md:w-auto shrink-0 pt-1 md:pt-0">
+                <Button
+                    onClick={handleApplyFilter}
+                    disabled={!selectedYearLevel || !selectedSection || !selectedProgramId || isFilterLoading || isProgramsLoading}
+                    className="h-10 flex-1 sm:flex-none shadow-sm transition-all px-6 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white font-medium tracking-wide"
+                    title="Apply selected filters"
+                >
+                    {isFilterLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="h-4 w-4 mr-2" />}
+                    {isFilterLoading ? "Loading..." : "Apply"}
+                </Button>
+                <Button
+                    onClick={handleClearFilter}
+                    disabled={isFilterLoading}
+                    variant="ghost"
+                    className="h-10 flex-1 sm:flex-none px-4 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-100 hover:bg-slate-200/60 dark:hover:bg-slate-800 font-medium"
+                    title="Clear filters"
+                >
+                    Clear
+                </Button>
+            </div>
+        </div>
+
+        {/* RIGHT: Schedule Action Buttons */}
+        <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center justify-end gap-3 w-full xl:w-auto shrink-0 pt-4 xl:pt-0 border-t border-slate-100 dark:border-slate-800 xl:border-none mt-2 xl:mt-0">
+            <Button 
+                onClick={handleDownloadPDF} 
+                disabled={!viewYearLevel || !viewSection || !viewProgramId}
+                className="h-10 w-full sm:w-auto shadow-sm transition-all border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-medium" 
+                variant="outline"
+            >
+                <Download className="mr-2 h-4 w-4 text-blue-600 dark:text-blue-400" /> Download PDF
+            </Button>
+            <Button 
+                onClick={handleOpenAddClass} 
+                disabled={isProgramsLoading}
+                className="h-10 w-full min-w-0 justify-center px-3 text-sm shadow-sm hover:shadow-md transition-all font-medium bg-primary dark:bg-slate-50 text-white dark:text-slate-900 sm:w-auto sm:min-w-[11rem] sm:px-4" 
+            >
+                <Plus className="h-4 w-4 shrink-0" />
+                <span className="min-w-0 truncate whitespace-nowrap">Add Class Schedule</span>
+            </Button>
+        </div>
+
+    </div>
+</div>
             
             {/* WRAPPER FOR PDF DOWNLOAD */}
             <div ref={scheduleGridRef} className="w-full">

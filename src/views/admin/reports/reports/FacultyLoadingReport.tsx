@@ -4,7 +4,7 @@ import axios from '../../../../plugin/axios';
 import { isAxiosError } from 'axios';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Filter, Loader2 } from "lucide-react"; 
+import { Filter, Loader2, UserRound } from "lucide-react"; 
 
 // --- TYPESCRIPT INTERFACES (Unchanged) --- 
 interface User {
@@ -336,11 +336,17 @@ export function FacultyLoadingReport() {
   }
   
   return (
-    <div className="bg-card p-4 md:p-6 rounded-lg shadow-sm border border-border">
-      {/* Faculty Selection Filter (Unchanged) */}
-      <div className="flex justify-end mb-6">
+    <div className="bg-white p-4 md:p-6 rounded-xl shadow-sm border border-slate-200">
+      {/* Faculty Selection Filter */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6 border-b border-slate-200 pb-4">
+        <div>
+          <h3 className="text-xl font-semibold text-slate-700 flex items-center">
+            <UserRound className="h-5 w-5 mr-2 text-primary" /> Faculty Loading Report
+          </h3>
+          <p className="text-sm text-muted-foreground mt-1">Summary of assigned subjects, sections, schedules, and load hours.</p>
+        </div>
         <Select value={selectedFacultyId} onValueChange={setSelectedFacultyId}>
-          <SelectTrigger className="w-full md:w-64">
+          <SelectTrigger className="w-full sm:w-72 border-primary/50 shadow-sm">
             <Filter className="h-4 w-4 mr-2 text-muted-foreground" />
             <SelectValue placeholder="Filter by Faculty" />
           </SelectTrigger>
@@ -351,34 +357,34 @@ export function FacultyLoadingReport() {
         </Select>
       </div>
 
-      <div className="rounded-lg border overflow-x-auto">
+      <div className="rounded-xl border border-slate-200 overflow-x-auto shadow-sm">
         <div>
-          <Table className="w-full">
-            <TableHeader className="bg-card sticky top-0 z-10">
+          <Table className="w-full border-collapse">
+            <TableHeader className="bg-slate-100/70 sticky top-0 z-10">
               <TableRow>
-                <TableHead className="w-[100px] border-r">Name of Faculty</TableHead>
+                <TableHead className="w-[180px] border-r border-b border-slate-200 text-xs uppercase tracking-wider font-bold text-white">Name of Faculty</TableHead>
                 {/* Subject Code Header */}
-                <TableHead className="w-[80px] border-r">Subject Code</TableHead> 
+                <TableHead className="w-[110px] border-r border-b border-slate-200 text-xs uppercase tracking-wider font-bold text-indigo-700 bg-indigo-50/80">Subject Code</TableHead> 
                 {/* Type Header */}
-                <TableHead className="w-[50px] border-r">Type</TableHead> 
-                <TableHead className="w-[80px] border-r">Section</TableHead> 
-                <TableHead className="text-center w-[100px] border-r">Paying Hours</TableHead>
-                <TableHead className="w-[80px]">Day</TableHead>
-                <TableHead className="w-[150px]">Time</TableHead>
-                <TableHead className="w-[80px] border-r">Room</TableHead>
-                <TableHead className="min-w-[250px] border-r">Remarks</TableHead>
+                <TableHead className="w-[70px] border-r border-b border-slate-200 text-center text-xs uppercase tracking-wider font-bold text-indigo-700 bg-indigo-50/80">Type</TableHead> 
+                <TableHead className="w-[110px] border-r border-b border-slate-200 text-xs uppercase tracking-wider font-bold text-indigo-700 bg-indigo-50/80">Section</TableHead> 
+                <TableHead className="text-center w-[105px] border-r border-b border-slate-200 text-xs uppercase tracking-wider font-bold text-indigo-700 bg-indigo-50/80">Paying Hours</TableHead>
+                <TableHead className="w-[95px] border-b border-slate-200 text-xs uppercase tracking-wider font-bold text-indigo-700 bg-indigo-50/80">Day</TableHead>
+                <TableHead className="w-[145px] border-b border-slate-200 text-xs uppercase tracking-wider font-bold text-indigo-700 bg-indigo-50/80">Time</TableHead>
+                <TableHead className="w-[90px] border-r border-b border-slate-200 text-xs uppercase tracking-wider font-bold text-indigo-700 bg-indigo-50/80">Room</TableHead>
+                <TableHead className="min-w-[250px] border-r border-b border-slate-200 text-xs uppercase tracking-wider font-bold text-indigo-700 bg-indigo-50/80">Remarks</TableHead>
                 
                 {/* <TableHead className="text-center w-[80px] border-r">Total Load Units</TableHead> */}
 
-                <TableHead className="w-[100px] text-right border-r">Total Load Units</TableHead>
-                <TableHead className="w-[100px] text-center">Preps</TableHead>
+                <TableHead className="w-[120px] text-center border-r border-b border-slate-200 text-xs uppercase tracking-wider font-bold text-white">Total Load Units</TableHead>
+                <TableHead className="w-[100px] text-center border-b border-slate-200 text-xs uppercase tracking-wider font-bold text-white">Preps</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredLoadData.map((facultyBlock, fIndex) => {
                 const rowCount = facultyBlock.subjects.length;
                 const hasOverload = facultyBlock.overload > 0;
-                const bgColor = fIndex % 2 === 1 ? 'bg-accent/10' : ''; 
+                const bgColor = fIndex % 2 === 1 ? 'bg-slate-50/40' : 'bg-white'; 
 
                 if (rowCount === 0) return null;
 
@@ -394,29 +400,32 @@ export function FacultyLoadingReport() {
                       return (
                         <TableRow 
                           key={`${facultyBlock.facultyId}-${sIndex}`} 
-                          className={`${bgColor} ${isLastRow ? 'border-b-4 border-gray-300' : 'border-b border-border/50'}`}
+                          className={`${bgColor} ${isLastRow ? 'border-b-2 border-slate-300' : 'border-b border-slate-200'} hover:bg-indigo-50/30 transition-colors`}
                         >
                           {/* 1. Name of Faculty (RowSpan) */}
                           {isFirstRow && (
-                            <TableCell rowSpan={rowCount} className="font-bold text-base align-top border-r whitespace-nowrap">
-                              {facultyBlock.name}
+                            <TableCell rowSpan={rowCount} className="align-top border-r border-slate-200 whitespace-nowrap bg-slate-50/70">
+                              <div className="font-bold text-sm text-slate-800 leading-tight">{facultyBlock.name}</div>
+                              <div className="text-[11px] text-slate-500 mt-1">{rowCount} assigned load{rowCount === 1 ? '' : 's'}</div>
                             </TableCell>
                           )}
                           
                           {/* Subject Code Cell with uppercase class */}
-                          <TableCell className="text-sm border-r whitespace-nowrap uppercase"> 
+                          <TableCell className="text-sm border-r border-slate-200 whitespace-nowrap uppercase font-bold text-indigo-700"> 
                               {subject.subjectCode}
                           </TableCell> 
                           
                           {/* Type Cell */}
-                          <TableCell className="text-center font-semibold text-xs border-r whitespace-nowrap">
-                              {subject.type}
+                          <TableCell className="text-center border-r border-slate-200 whitespace-nowrap">
+                              <span className="inline-flex items-center justify-center rounded bg-white/70 px-2 py-1 text-xs font-bold text-slate-700 ring-1 ring-inset ring-slate-200">
+                                {subject.type}
+                              </span>
                           </TableCell> 
                           
                           {/* 5. Section */}
-                          <TableCell className="text-sm border-r whitespace-nowrap">
+                          <TableCell className="text-sm border-r border-slate-200 whitespace-nowrap">
                               {isSectionAssigned ? (
-                                  subject.section
+                                  <span className="font-medium text-slate-700">{subject.section}</span>
                               ) : (
                                   <span className="inline-flex items-center rounded-md bg-destructive/10 px-2 py-1 text-xs font-medium text-destructive ring-1 ring-inset ring-destructive/20">
                                       Unassigned <br />Section
@@ -425,14 +434,14 @@ export function FacultyLoadingReport() {
                           </TableCell> 
                           
                           {/* 6. Paying Hours, Day, Time, Room */}
-                          <TableCell className="text-center font-medium border-r">{subject.payingHours.toFixed(1) || ""}</TableCell>
-                          <TableCell className="text-sm">{subject.day}</TableCell>
-                          <TableCell className="text-sm">{subject.time}</TableCell>
-                          <TableCell className="text-sm border-r">{subject.room}</TableCell>
+                          <TableCell className="text-center font-semibold border-r border-slate-200 text-slate-700">{subject.payingHours.toFixed(1) || ""}</TableCell>
+                          <TableCell className="text-sm text-slate-600">{subject.day}</TableCell>
+                          <TableCell className="text-sm text-slate-600 whitespace-nowrap">{subject.time}</TableCell>
+                          <TableCell className="text-sm border-r border-slate-200 font-medium text-slate-700">{subject.room}</TableCell>
                           
                           {/* 10. Remarks */}
                           {showRemark && (
-                              <TableCell rowSpan={subject.remarkRowSpan} className="text-sm text-muted-foreground border-r whitespace-normal align-top">
+                              <TableCell rowSpan={subject.remarkRowSpan} className="text-sm text-slate-600 border-r border-slate-200 whitespace-normal align-top leading-snug">
                                   {subject.remarks}
                               </TableCell>
                           )}
@@ -446,9 +455,9 @@ export function FacultyLoadingReport() {
                           
                           {/* 11. Fac. Total Load Hrs */}
                           {isFirstRow && (
-                            <TableCell rowSpan={rowCount} className="text-center font-bold text-lg align-top border-r">
+                            <TableCell rowSpan={rowCount} className="text-center align-top border-r border-slate-200 bg-slate-50/70">
                               <div className="py-1">
-                                <span className="text-xl font-bold">{facultyBlock.loadString}</span>
+                                <span className="text-xl font-bold text-slate-800">{facultyBlock.loadString}</span>
                                 {hasOverload && (
                                     <div className="text-destructive font-semibold text-xs mt-1">overload {facultyBlock.overload}</div>
                                 )}
@@ -458,8 +467,10 @@ export function FacultyLoadingReport() {
 
                           {/* 12. Preps */}
                           {isFirstRow && (
-                            <TableCell rowSpan={rowCount} className="text-center align-top">
-                              {facultyBlock.preps === 1 ? 'prep' : `${facultyBlock.preps} preps`}
+                            <TableCell rowSpan={rowCount} className="text-center align-top bg-slate-50/70">
+                              <span className="inline-flex items-center rounded-md bg-indigo-50 px-2 py-1 text-xs font-semibold text-indigo-700 ring-1 ring-inset ring-indigo-100">
+                                {facultyBlock.preps === 1 ? '1 prep' : `${facultyBlock.preps} preps`}
+                              </span>
                             </TableCell>
                           )}
                         </TableRow>
@@ -471,7 +482,7 @@ export function FacultyLoadingReport() {
               
               {filteredLoadData.length === 0 && (
                 <TableRow>
-                    <TableCell colSpan={12} className="h-24 text-center text-muted-foreground">
+                    <TableCell colSpan={11} className="h-24 text-center text-muted-foreground">
                         No faculty load data found for the selected filter.
                     </TableCell>
                 </TableRow>

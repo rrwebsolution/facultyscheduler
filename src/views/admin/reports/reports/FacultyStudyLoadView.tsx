@@ -220,14 +220,17 @@ export const FacultyStudyLoadView = () => {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
                 transition={{ duration: 0.2 }}
-                className="bg-card p-4 md:p-6 rounded-xl shadow-2xl border-2 border-border overflow-x-auto"
+                className="bg-white p-4 md:p-6 rounded-xl shadow-sm border border-slate-200 overflow-x-auto"
             >
-                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 border-b pb-4 gap-4">
-                    <h3 className="text-xl font-semibold text-gray-700 flex items-center">
-                         <BookOpen className="h-5 w-5 mr-2 text-primary" /> Student Study Load Filters
-                    </h3>
+                 <div className="flex flex-col gap-4 lg:flex-row lg:justify-between lg:items-center mb-6 border-b border-slate-200 pb-4">
+                    <div>
+                        <h3 className="text-xl font-semibold text-slate-700 flex items-center">
+                             <BookOpen className="h-5 w-5 mr-2 text-primary" /> Student Study Load
+                        </h3>
+                        <p className="text-sm text-muted-foreground mt-1">Filter study loads by program, year level, section, and faculty.</p>
+                    </div>
                     
-                    <div className="flex flex-wrap gap-4 w-full md:w-auto">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 w-full lg:w-auto">
                         
                         {/* Program Filter */}
                         <Select value={selectedProgram} onValueChange={setSelectedProgram}>
@@ -294,38 +297,38 @@ export const FacultyStudyLoadView = () => {
                 </div>
 
                 {/* Report Table */}
-                <div className="border border-border rounded-lg shadow-inner overflow-hidden">
+                <div className="border border-slate-200 rounded-xl shadow-sm overflow-hidden">
                     
                     {/* Section Header */}
-                    <div className="p-3">
-                        <h4 className="text-sm font-bold uppercase tracking-wider">
+                    <div className="p-3 bg-slate-50/70 border-b border-slate-200">
+                        <h4 className="text-sm font-bold uppercase tracking-wider text-slate-700">
                            {currentSectionHeader}
                         </h4>
                     </div>
 
                     <Table className="w-full border-collapse">
-                        <TableHeader className="bg-primary sticky top-0 z-10">
-                            <TableRow className="border-b-0">
-                                <TableHead className="w-[18%] border-r border-primary-foreground/30 text-center font-extrabold text-primary-foreground text-sm uppercase"> {/* Adjusted width */}
+                        <TableHeader className="bg-slate-100/70 sticky top-0 z-10">
+                            <TableRow>
+                                <TableHead className="w-[18%] border-r border-b border-slate-200 text-center font-bold text-indigo-700 bg-indigo-50/80 text-xs uppercase tracking-wider">
                                     Subject / Course
                                 </TableHead>
-                                <TableHead className="w-[8%] border-r border-primary-foreground/30 text-center font-extrabold text-primary-foreground text-sm uppercase"> 
+                                <TableHead className="w-[8%] border-r border-b border-slate-200 text-center font-bold text-indigo-700 bg-indigo-50/80 text-xs uppercase tracking-wider"> 
                                     Section
                                 </TableHead>
-                                <TableHead className="w-[8%] border-r border-primary-foreground/30 text-center font-extrabold text-primary-foreground text-sm uppercase"> {/* <--- NEW HEADER */}
+                                <TableHead className="w-[8%] border-r border-b border-slate-200 text-center font-bold text-indigo-700 bg-indigo-50/80 text-xs uppercase tracking-wider">
                                     Type
                                 </TableHead>
-                                <TableHead className="w-[10%] border-r border-primary-foreground/30 text-center font-extrabold text-primary-foreground text-sm uppercase"> 
+                                <TableHead className="w-[10%] border-r border-b border-slate-200 text-center font-bold text-indigo-700 bg-indigo-50/80 text-xs uppercase tracking-wider"> 
                                     Day
                                 </TableHead>
-                                <TableHead className="w-[15%] border-r border-primary-foreground/30 text-center font-extrabold text-primary-foreground text-sm uppercase"> 
+                                <TableHead className="w-[15%] border-r border-b border-slate-200 text-center font-bold text-indigo-700 bg-indigo-50/80 text-xs uppercase tracking-wider"> 
                                     Time
                                 </TableHead>
-                                <TableHead className="w-[10%] border-r border-primary-foreground/30 text-center font-extrabold text-primary-foreground text-sm uppercase"> 
+                                <TableHead className="w-[10%] border-r border-b border-slate-200 text-center font-bold text-indigo-700 bg-indigo-50/80 text-xs uppercase tracking-wider"> 
                                     Room
                                 </TableHead>
-                                <TableHead className="w-[20%] text-center font-extrabold text-primary-foreground text-sm uppercase"> 
-                                    Teacher
+                                <TableHead className="w-[20%] border-b border-slate-200 text-center font-bold text-indigo-700 bg-indigo-50/80 text-xs uppercase tracking-wider"> 
+                                    Teacher/Instructor
                                 </TableHead>
                             </TableRow>
                         </TableHeader>
@@ -333,26 +336,30 @@ export const FacultyStudyLoadView = () => {
                         <TableBody>
                             {filteredReportData.length > 0 ? (
                                 filteredReportData.map((schedule, index) => (
-                                    <TableRow key={index} className="border-b border-gray-200 hover:bg-muted/50 transition-colors"> 
-                                        <TableCell className="border-r border-gray-300 align-middle p-2 text-sm font-medium text-gray-800">
+                                    <TableRow key={index} className={`${index % 2 === 1 ? 'bg-slate-50/40' : 'bg-white'} border-b border-slate-200 hover:bg-indigo-50/30 transition-colors`}> 
+                                        <TableCell className="border-r border-slate-200 align-middle p-2 text-sm font-bold text-indigo-700">
                                             {schedule.course}
                                         </TableCell>
-                                        <TableCell className="border-r border-gray-300 align-middle p-2 text-center text-sm font-semibold text-gray-700">
-                                            {schedule.section}
+                                        <TableCell className="border-r border-slate-200 align-middle p-2 text-center text-sm font-semibold text-slate-700">
+                                            <span className="inline-flex items-center rounded-md bg-white/70 px-2 py-1 text-xs font-semibold text-slate-700 ring-1 ring-inset ring-slate-200">
+                                                {schedule.section}
+                                            </span>
                                         </TableCell>
-                                        <TableCell className="border-r border-gray-300 align-middle p-2 text-center text-sm font-semibold text-gray-700 uppercase"> {/* <--- NEW CELL */}
-                                            {schedule.type === 'LEC' ? 'Lecture' : schedule.type === 'LAB' ? 'Laboratory' : schedule.type}
+                                        <TableCell className="border-r border-slate-200 align-middle p-2 text-center text-sm font-semibold text-slate-700 uppercase">
+                                            <span className="inline-flex items-center rounded bg-white/70 px-2 py-1 text-xs font-bold text-slate-700 ring-1 ring-inset ring-slate-200">
+                                                {schedule.type === 'LEC' ? 'Lecture' : schedule.type === 'LAB' ? 'Laboratory' : schedule.type}
+                                            </span>
                                         </TableCell>
-                                        <TableCell className="border-r border-gray-300 align-middle p-2 text-center text-sm font-semibold text-gray-700">
+                                        <TableCell className="border-r border-slate-200 align-middle p-2 text-center text-sm font-semibold text-slate-600">
                                             {schedule.day}
                                         </TableCell>
-                                        <TableCell className="border-r border-gray-300 align-middle p-2 text-center text-sm text-gray-700 whitespace-nowrap">
+                                        <TableCell className="border-r border-slate-200 align-middle p-2 text-center text-sm text-slate-600 whitespace-nowrap">
                                             {schedule.time}
                                         </TableCell>
-                                        <TableCell className="border-r border-gray-300 align-middle p-2 text-center text-sm text-gray-700">
+                                        <TableCell className="border-r border-slate-200 align-middle p-2 text-center text-sm font-medium text-slate-700">
                                             {schedule.room}
                                         </TableCell>
-                                        <TableCell className="align-middle p-2 text-sm text-gray-700">
+                                        <TableCell className="align-middle p-2 text-sm text-slate-700">
                                             {schedule.teacher}
                                         </TableCell>
                                     </TableRow>

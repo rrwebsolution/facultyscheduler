@@ -18,7 +18,7 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { X } from "lucide-react";
+import { Briefcase, Mail, Save, Sparkles, Upload, UserRound, X } from "lucide-react";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 // Assuming Faculty type is now simplified to only the necessary fields
 import type { Faculty } from "../table/FacultyTable"; 
@@ -280,28 +280,46 @@ export function FacultyFormModal({ isOpen, onClose, onSave, initialData, experti
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
-          <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-              <DialogTitle className="text-2xl font-bold text-foreground">{initialData ? "Edit Faculty" : "Add New Faculty"}</DialogTitle>
+          <DialogContent className="max-h-[92vh] overflow-y-auto p-0 sm:max-w-4xl">
+          <DialogHeader className="border-b border-border bg-muted/30 px-5 py-4 sm:px-6">
+              <div className="flex items-center gap-3">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <UserRound className="h-5 w-5" />
+                </div>
+                <div>
+                  <DialogTitle className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">{initialData ? "Edit Faculty" : "Add New Faculty"}</DialogTitle>
+                  <p className="mt-1 text-sm text-muted-foreground">Update faculty profile, department, expertise, and load units.</p>
+                </div>
+              </div>
           </DialogHeader>
-          <form onSubmit={handleSubmit} className="py-4 space-y-6">
-              <div className="space-y-2">
-                  <Label>Profile Picture</Label>
-                  <div className="flex items-center gap-5">
-                    <button type="button" onClick={() => imagePreview && setIsPreviewModalOpen(true)} className="focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary rounded-full disabled:cursor-not-allowed" disabled={!imagePreview} title="Click to preview image">
-                      <img src={imagePreview || 'https://via.placeholder.com/80'} alt="Profile Preview" className="w-20 h-20 rounded-full object-cover border-2 border-border cursor-pointer hover:opacity-80 transition-opacity"/>
+          <form onSubmit={handleSubmit} className="space-y-6 px-5 py-5 sm:px-6">
+              <div className="rounded-xl border border-border bg-background p-4 shadow-sm">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                    <button type="button" onClick={() => imagePreview && setIsPreviewModalOpen(true)} className="mx-auto rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:cursor-not-allowed sm:mx-0" disabled={!imagePreview} title="Click to preview image">
+                      <img src={imagePreview || 'https://via.placeholder.com/80'} alt="Profile Preview" className="h-24 w-24 rounded-full border-4 border-background object-cover shadow-md ring-1 ring-border transition-opacity hover:opacity-85"/>
                     </button>
-                    <div className="flex-1">
-                        <Input id="avatar-file" type="file" accept="image/png, image/jpeg" onChange={handleImageChange} className="block w-full text-sm text-muted-foreground file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 cursor-pointer"/>
-                        <p className="text-xs text-muted-foreground mt-2">PNG or JPG. Max 2MB.</p>
+                    <div className="min-w-0 flex-1 space-y-2">
+                        <Label className="text-sm font-semibold text-foreground">Profile Picture</Label>
+                        <div className="relative">
+                          <Upload className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                          <Input id="avatar-file" type="file" accept="image/png, image/jpeg" onChange={handleImageChange} className="h-11 cursor-pointer pl-10 text-sm text-muted-foreground file:mr-4 file:rounded-md file:border-0 file:bg-primary file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-primary-foreground hover:file:bg-primary/90"/>
+                        </div>
+                        <p className="text-xs text-muted-foreground">PNG or JPG. Max 2MB.</p>
                     </div>
                   </div>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2"><Label htmlFor="name">Full Name</Label><Input id="name" name="name" value={formData.name} onChange={handleChange} placeholder="Enter full name" required /></div>
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <UserRound className="h-4 w-4 text-primary" />
+                  <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Faculty Information</h3>
+                </div>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div className="space-y-2"><Label htmlFor="name">Full Name</Label><Input id="name" name="name" value={formData.name} onChange={handleChange} placeholder="Enter full name" required className="h-11" /></div>
                   
                   <div className="space-y-2">
                       <Label htmlFor="email">Email Address</Label>
+                      <div className="relative">
+                      <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                       <Input 
                           id="email" 
                           name="email" 
@@ -312,13 +330,15 @@ export function FacultyFormModal({ isOpen, onClose, onSave, initialData, experti
                           required 
                           pattern="[a-zA-Z0-9._%+-ñÑ]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}"
                           title="Please enter a valid email address. The 'ñ' character is allowed."
+                          className="h-11 pl-10"
                       />
+                      </div>
                   </div>
                   
                   <div className="space-y-2">
                       <Label htmlFor="designation">Designation</Label>
                       <Select value={formData.designation} onValueChange={(value) => handleSelectChange("designation", value)} required>
-                          <SelectTrigger><SelectValue placeholder="Select a designation" /></SelectTrigger>
+                          <SelectTrigger className="h-11"><SelectValue placeholder="Select a designation" /></SelectTrigger>
                           <SelectContent>
                               <SelectItem value="Dean">Dean</SelectItem>
                               <SelectItem value="Program Head">Program Head</SelectItem>
@@ -329,7 +349,7 @@ export function FacultyFormModal({ isOpen, onClose, onSave, initialData, experti
                   <div className="space-y-2">
                       <Label htmlFor="department">Department</Label>
                       <Select value={formData.department} onValueChange={(v) => handleSelectChange("department", v)} required>
-                          <SelectTrigger disabled={isLoadingDepartments}>
+                          <SelectTrigger disabled={isLoadingDepartments} className="h-11">
                               <SelectValue placeholder={isLoadingDepartments ? "Loading..." : "Select a department"} />
                           </SelectTrigger>
                           <SelectContent>
@@ -341,34 +361,44 @@ export function FacultyFormModal({ isOpen, onClose, onSave, initialData, experti
                           </SelectContent>
                       </Select>
                   </div>
+                </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 border-t pt-6">
+              <div className="space-y-4 rounded-xl bg-muted/30 p-4">
+                <div className="flex items-center gap-2">
+                  <Briefcase className="h-4 w-4 text-primary" />
+                  <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Load Units</h3>
+                </div>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                   {/* UPDATED: Value set to String(value) to display 0 */}
-                  <div className="space-y-2"><Label htmlFor="deload_units">Deload Units</Label><Input id="deload_units" name="deload_units" type="number" min={0} value={String(formData.deload_units)} onChange={handleChange} placeholder="0" /></div>
+                  <div className="space-y-2"><Label htmlFor="deload_units">Deload Units</Label><Input id="deload_units" name="deload_units" type="number" min={0} value={String(formData.deload_units)} onChange={handleChange} placeholder="0" className="h-11" /></div>
                   
                   <div className="space-y-2">
                       <Label htmlFor="teaching_load_units">Teaching Load</Label>
                       {/* UPDATED: Value set to String(value) to display 0 */}
-                      <Input id="teaching_load_units" name="teaching_load_units" type="number" min={0} value={String(formData.teaching_load_units)} onChange={handleChange} placeholder="e.g. 18" />
+                      <Input id="teaching_load_units" name="teaching_load_units" type="number" min={0} value={String(formData.teaching_load_units)} onChange={handleChange} placeholder="e.g. 18" className="h-11" />
                   </div>
                   
                   {/* UPDATED: Value set to String(value) to display 0 */}
-                  <div className="space-y-2"><Label htmlFor="overload_units">Overload Units</Label><Input id="overload_units" name="overload_units" type="number" min={0} value={String(formData.overload_units)} onChange={handleChange} placeholder="0" /></div>
+                  <div className="space-y-2"><Label htmlFor="overload_units">Overload Units</Label><Input id="overload_units" name="overload_units" type="number" min={0} value={String(formData.overload_units)} onChange={handleChange} placeholder="0" className="h-11" /></div>
+                </div>
               </div>
               
               {/* UPDATED EXPERTISE FIELD (Token/Tag Input with Autocomplete/Suggestions) */}
-              <div className="space-y-2">
-                  <Label htmlFor="expertise-input">Expertise</Label>
+              <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-primary" />
+                    <Label htmlFor="expertise-input" className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Expertise</Label>
+                  </div>
                   <div className="space-y-2">
-                      <Command className="rounded-md border border-input">
+                      <Command className="overflow-hidden rounded-xl border border-input shadow-sm">
                         {formData.expertise.length > 0 && (
-                          <div className="flex flex-wrap gap-2 p-2 border-b border-input">
+                          <div className="flex flex-wrap gap-2 border-b border-input bg-muted/30 p-3">
                             {formData.expertise.map((exp) => {
                               const colorIndex = getStringHash(exp) % expertiseColorPalette.length;
                               const color = expertiseColorPalette[colorIndex];
                               return (
-                                <Badge key={exp} className={`font-normal ${color.bg} ${color.text}`}>
+                                <Badge key={exp} className={`rounded-full px-2.5 py-1 font-medium ${color.bg} ${color.text}`}>
                                   {exp}
                                   <button type="button" onClick={() => handleRemoveExpertise(exp)} className="ml-1.5 rounded-full p-0.5" aria-label={`Remove ${exp}`}>
                                     <X size={14} />
@@ -406,9 +436,12 @@ export function FacultyFormModal({ isOpen, onClose, onSave, initialData, experti
                   </div>
               </div>
               
-              <DialogFooter className="mt-8 pt-4 border-t border-border">
-                <DialogClose asChild><Button type="button" variant="outline" disabled={isLoading}>Cancel</Button></DialogClose>
-                <Button type="submit" disabled={isLoading}>{isLoading ? 'Saving...' : (initialData ? 'Save Changes' : 'Save Faculty')}</Button>
+              <DialogFooter className="sticky bottom-0 -mx-5 mt-8 border-t border-border bg-background/95 px-5 py-4 backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:-mx-6 sm:px-6">
+                <DialogClose asChild><Button type="button" variant="outline" disabled={isLoading} className="h-10 w-full sm:w-auto">Cancel</Button></DialogClose>
+                <Button type="submit" disabled={isLoading} className="h-10 w-full gap-2 shadow-sm sm:w-auto">
+                  <Save className="h-4 w-4" />
+                  {isLoading ? 'Saving...' : (initialData ? 'Save Changes' : 'Save Faculty')}
+                </Button>
               </DialogFooter>
           </form>
           </DialogContent>

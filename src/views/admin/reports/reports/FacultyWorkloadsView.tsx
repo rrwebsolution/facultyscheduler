@@ -48,7 +48,6 @@ export function FacultyWorkloadsView() {
   // --- POLICY LIMITS (Constants) ---
   const BASE_LOAD = 21;       
   const OVERLOAD_LIMIT = 3;   
-  const TOTAL_MAX_LOAD = BASE_LOAD + OVERLOAD_LIMIT; 
   // ---------------------------------
 
   // 3. Fetch data from the faculty-loading endpoint and compute assigned loads per faculty
@@ -157,9 +156,8 @@ export function FacultyWorkloadsView() {
   // --- Loading State Handler ---
   if (loading) {
     return (
-      <div className="space-y-6 pt-4">
-        <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Faculty Workload Management</h1>
-        <div className="bg-card p-6 rounded-lg shadow-sm border text-center text-muted-foreground flex flex-col items-center justify-center">
+      <div className="space-y-6">
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 text-center text-muted-foreground flex flex-col items-center justify-center min-h-[220px]">
           <Loader2 className="h-8 w-8 animate-spin mb-3 text-primary" />
           <p>Loading Faculty Workloads...</p>
         </div>
@@ -170,9 +168,8 @@ export function FacultyWorkloadsView() {
   // --- Error State Handler ---
   if (error) {
     return (
-       <div className="space-y-6 pt-4">
-        <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-destructive">Data Error</h1>
-        <div className="bg-card p-6 rounded-lg shadow-sm border border-destructive text-center text-destructive">
+       <div className="space-y-6">
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-destructive/50 text-center text-destructive min-h-[220px] flex items-center justify-center">
           <p>Error: {error}</p>
         </div>
       </div>
@@ -182,9 +179,8 @@ export function FacultyWorkloadsView() {
   // --- Empty State Handler ---
   if (facultyWorkloads.length === 0) {
     return (
-      <div className="space-y-6 pt-4">
-        <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Faculty Workload Management</h1>
-        <div className="bg-card p-6 rounded-lg shadow-sm border text-center text-muted-foreground">
+      <div className="space-y-6">
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 text-center text-muted-foreground">
           <p>No active faculty found to display workload data.</p>
         </div>
       </div>
@@ -193,21 +189,19 @@ export function FacultyWorkloadsView() {
 
   // --- Main Render Logic ---
   return (
-    <div className="space-y-6"> 
-        {/* Page Header Structure */}
-        <header className="pb-2">
-            <h1 className="text-2xl md:text-3xl font-bold tracking-tight flex items-center gap-3">
-                <BarChartHorizontal className="h-6 w-6 text-primary" />
-                Faculty Workload Management
-            </h1>
-            <p className="text-muted-foreground text-sm mt-1 ml-9">
-                Overview of current unit loads vs. a standard teaching load of <span className="font-semibold">{BASE_LOAD} units</span> with an allowed overload of <span className="font-semibold">{OVERLOAD_LIMIT} units</span> (Total: {TOTAL_MAX_LOAD} units).
+    <div className="bg-white p-4 md:p-6 rounded-xl shadow-sm border border-slate-200"> 
+        <header className="mb-6 border-b border-slate-200 pb-4">
+            <h3 className="text-xl font-semibold text-slate-700 flex items-center">
+                <BarChartHorizontal className="h-5 w-5 mr-2 text-primary" />
+                Faculty Workloads
+            </h3>
+            <p className="text-muted-foreground text-sm mt-1">
+                Current unit loads compared against <span className="font-semibold">{BASE_LOAD} base units</span> plus <span className="font-semibold">{OVERLOAD_LIMIT} overload units</span>.
             </p>
         </header>
 
-        {/* Workload Cards */}
-        <div className="bg-card p-4 md:p-6 rounded-lg shadow-sm border border-border">
-          <div className="space-y-6">
+        <div className="rounded-xl border border-slate-200 shadow-sm overflow-hidden" data-workloads-export="true">
+          <div className="divide-y divide-slate-200">
             {facultyWorkloads.map((faculty) => {
               const assignedLoad = faculty.t_load_units; 
               const facultyLimit = faculty.limit || BASE_LOAD; 
@@ -215,21 +209,26 @@ export function FacultyWorkloadsView() {
               const allowedMax = facultyLimit + allowedOverload;
 
               let loadTextColor = "text-primary";
+              let statusBadgeClass = "bg-slate-100 text-slate-700 ring-slate-200";
               let statusText = "";
 
               // Determine status text and colors based on allowed overload
               if (assignedLoad > allowedMax) {
                 loadTextColor = "text-red-600";
-                statusText = `(EXCESSIVE OVERLOAD +${(assignedLoad - allowedMax).toFixed(1)})`;
+                statusBadgeClass = "bg-red-50 text-red-700 ring-red-200";
+                statusText = `Excess +${(assignedLoad - allowedMax).toFixed(1)}`;
               } else if (assignedLoad > facultyLimit) {
                 loadTextColor = "text-yellow-500";
-                statusText = `(OVERLOAD +${(assignedLoad - facultyLimit).toFixed(1)} of ${allowedOverload})`;
+                statusBadgeClass = "bg-amber-50 text-amber-700 ring-amber-200";
+                statusText = `Overload +${(assignedLoad - facultyLimit).toFixed(1)} / ${allowedOverload}`;
               } else if (assignedLoad === facultyLimit) {
                 loadTextColor = "text-primary";
-                statusText = "(FULL LOAD)";
+                statusBadgeClass = "bg-indigo-50 text-indigo-700 ring-indigo-100";
+                statusText = "Full load";
               } else {
-                loadTextColor = "text-muted-foreground";
-                statusText = `${facultyLimit - assignedLoad}`;
+                loadTextColor = "text-slate-600";
+                statusBadgeClass = "bg-emerald-50 text-emerald-700 ring-emerald-100";
+                statusText = `${facultyLimit - assignedLoad} units available`;
               }
               
               // Ensure assignedLoad is formatted to one decimal place if not an integer
@@ -237,20 +236,37 @@ export function FacultyWorkloadsView() {
 
 
               return (
-                <div key={faculty.name}>
-                  <div className="flex justify-between items-center mb-1.5 text-sm">
-                    <div className="flex items-center gap-2">
-                      <User className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-semibold text-foreground">{faculty.name}</span>
+                <div
+                  key={faculty.name}
+                  className="p-4 hover:bg-indigo-50/20 transition-colors"
+                  data-workload-row="true"
+                  data-faculty-name={faculty.name}
+                  data-assigned-load={displayLoad}
+                  data-base-limit={facultyLimit}
+                  data-overload-allowance={allowedOverload}
+                  data-status={statusText}
+                >
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-3">
+                    <div className="flex items-start gap-3 min-w-0">
+                      <div className="mt-0.5 rounded-md bg-slate-100 p-2">
+                        <User className="h-4 w-4 text-slate-500" />
+                      </div>
+                      <div className="min-w-0">
+                        <span className="font-semibold text-slate-800 block truncate">{faculty.name}</span>
+                        <span className="text-xs text-slate-500">Limit {facultyLimit} units, overload allowance {allowedOverload}</span>
+                      </div>
                     </div>
-                    {/* Display load and status text. */}
-                    <span className={`font-mono font-bold ${loadTextColor}`}>
-                      {statusText}/{facultyLimit}
-                      {displayLoad && <span className={`ml-1 text-sm ${loadTextColor}`}>{`(${displayLoad} units left)` }</span>}
-                    </span>
+                    <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+                      <span className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-semibold ring-1 ring-inset ${statusBadgeClass}`}>
+                        {statusText}
+                      </span>
+                      <span className={`font-mono font-bold ${loadTextColor}`}>
+                        {displayLoad}/{facultyLimit}
+                      </span>
+                    </div>
                   </div>
                   {/* Segmented progress bar: base (primary), overload (yellow), excess (red) */}
-                  <div className="w-full h-3 rounded overflow-hidden bg-border">
+                  <div className="w-full h-3 rounded-full overflow-hidden bg-slate-100 ring-1 ring-inset ring-slate-200">
                     {(() => {
                       const baseLimit = facultyLimit; 
                       const overloadLimit = allowedMax; 
@@ -266,8 +282,8 @@ export function FacultyWorkloadsView() {
 
                       return (
                         <div className="flex h-3 w-full">
-                          <div style={{ width: `${primaryPct}%` }} className="bg-primary" />
-                          <div style={{ width: `${yellowPct}%` }} className="bg-yellow-500" />
+                          <div style={{ width: `${primaryPct}%` }} className="bg-indigo-500" />
+                          <div style={{ width: `${yellowPct}%` }} className="bg-amber-400" />
                           <div style={{ width: `${redPct}%` }} className="bg-red-600" />
                         </div>
                       );

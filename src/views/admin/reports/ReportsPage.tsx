@@ -20,6 +20,12 @@ interface KpiData {
 // --- TAB ID TYPE UPDATE ---
 type TabId = "loading" | "schedules" | "workloads" | "studyload";
 const REPORT_TAB_STORAGE_KEY = "admin_reports_active_tab_v1";
+const REPORT_TAB_LABELS: Record<TabId, string> = {
+  loading: "Faculty Loading",
+  schedules: "Schedules",
+  workloads: "Faculty Workloads",
+  studyload: "Study Load",
+};
 
 // --- MAIN REPORTS PAGE COMPONENT ---
 function ReportsPage() {
@@ -133,248 +139,172 @@ function ReportsPage() {
     );
   };
 
-  // Export: open the report area in a new window and call print (user can save as PDF)
-  const exportPdf = () => {
-    // Try using html2canvas + jsPDF to capture the CURRENT VISIBLE VIEWPORT (handles page scroll)
-    (async () => {
-      // Build a styled header that will appear above the table in the PDF
-      const headerHtml = `
-        <div style="width:100%; padding:12px 16px; margin-bottom:8px; box-sizing:border-box; background:#f3f4f6; border:1px solid #e5e7eb; border-radius:6px;">
-          <h2 style="margin:0; font-size:18px; color:#111827; font-weight:700;">${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} Report</h2>
-          <div style="font-size:12px; color:#374151; margin-top:4px;">Generated: ${new Date().toLocaleString()}</div>
-        </div>
-      `;
-
-      try {
-        const html2canvasModule = await import('html2canvas');
-        const html2canvas = html2canvasModule.default || html2canvasModule;
-        const { jsPDF } = await import('jspdf');
-
-        // Target the first VISIBLE table inside report-content if present, otherwise capture the whole report-content
-        const reportEl = document.getElementById('report-content');
-        let tableEl: HTMLElement | null = null;
-        if (reportEl) {
-          const tables = Array.from(reportEl.querySelectorAll('table')) as HTMLElement[];
-          tableEl = tables.find(t => {
-            const rects = t.getClientRects();
-            return rects && rects.length > 0 && Array.from(rects).some(r => r.width > 0 && r.height > 0);
-          }) || (tables.length ? tables[0] : null);
-        }
-        const targetEl = tableEl || reportEl || document.body;
-
-        // If we're in the schedules tab and there is a visible table (Room Schedule or Year Level),
-        // prefer landscape orientation and a slightly smaller margin so the table appears bigger.
-        const isSchedulesTable = activeTab === 'schedules' && !!tableEl;
-
-        // Capture the target element (table preferred) - but render into a temporary wrapper
-        // so the header is included and styled consistently for the exported image.
-        const wrapper = document.createElement('div');
-        wrapper.style.background = '#ffffff';
-        wrapper.style.boxSizing = 'border-box';
-        wrapper.style.padding = '6px';
-
-        // If schedules table, apply larger base font so text is readable in export
-        if (isSchedulesTable) {
-          wrapper.style.fontSize = '12px';
-        }
-
-        // Insert header (as element) and a clone of the target content
-        const headerEl = document.createElement('div');
-        headerEl.innerHTML = headerHtml;
-        wrapper.appendChild(headerEl);
-
-        const clone = (targetEl as HTMLElement).cloneNode(true) as HTMLElement;
-
-        // For schedules table, increase table cell font-size and padding to make words readable
-        if (isSchedulesTable) {
-          try {
-            const cells = clone.querySelectorAll('th, td') as NodeListOf<HTMLElement>;
-            cells.forEach((c) => {
-              c.style.fontSize = '12px';
-              c.style.padding = '8px 6px';
-            });
-            const tables = clone.querySelectorAll('table') as NodeListOf<HTMLElement>;
-            tables.forEach(t => {
-              t.style.fontSize = '12px';
-              t.style.borderSpacing = '0';
-            });
-
-            // --- FIX & SIZE INCREASE for FacultySchedulesView (Absolute Positioning + Dynamic Height in Table Cells) ---
-            // INCREASED: from 64px (h-16) to 96px (h-24) to make the schedule visibly bigger
-            const ROW_HEIGHT_PIXELS_EXPORT = 96; 
-
-            // 1. Remove fixed height from all TableRow elements
-            const rows = clone.querySelectorAll('tr') as NodeListOf<HTMLElement>;
-            rows.forEach(r => {
-                r.style.height = 'auto'; // Overwrite h-16
-                r.style.minHeight = 'auto';
-            });
-
-            // 2. Adjust positioning for the absolutely positioned schedule content & resize
-            const tds = clone.querySelectorAll('td') as NodeListOf<HTMLElement>;
-            tds.forEach(td => {
-                // Ensure no fixed height and reset relative context
-                td.style.height = 'auto'; 
-                td.style.position = 'static'; 
-                td.style.verticalAlign = 'top'; // Align content to the top of the cell
-
-                const contentDiv = td.querySelector('div') as HTMLElement | null;
-
-                if (contentDiv && (contentDiv.style.position === 'absolute' || contentDiv.className.includes('absolute'))) {
-                    // This is a STARTING class cell: Un-absolute it to let it push row height
-                    contentDiv.style.position = 'static'; 
-                    contentDiv.style.top = 'auto'; 
-                    contentDiv.style.left = 'auto';
-                    contentDiv.style.width = '100%'; 
-                    contentDiv.style.boxSizing = 'border-box';
-                    
-                    // Allow the content div's dynamic height to dictate the cell size
-                    td.style.padding = '0'; 
-                    
-                    // --- Font size increase for bigger print out ---
-                    // Note: The original schedule components calculate content height based on ROW_HEIGHT_PIXELS (64)
-                    // We must update the contentDiv's style to reflect the new larger unit (96px)
-                    const currentHeightStyle = contentDiv.style.height;
-                    const match = currentHeightStyle.match(/(\d+)px/);
-                    if (match) {
-                        const originalHeight = parseInt(match[1], 10);
-                        // Assuming originalHeight is based on 64px/slot, recalculate for 96px/slot
-                        const slotSpan = Math.round(originalHeight / 64);
-                        if (slotSpan > 0) {
-                            contentDiv.style.height = `${slotSpan * ROW_HEIGHT_PIXELS_EXPORT}px`;
-                        }
-                    }
-
-                    const bigText = contentDiv.querySelector('span:first-child') as HTMLElement | null; // Subject/Section
-                    if (bigText) {
-                        bigText.style.fontSize = '16px'; // from 14px (text-sm) to 16px (text-base)
-                        bigText.style.fontWeight = '700';
-                    }
-                    const smallText = contentDiv.querySelectorAll('span'); // Faculty/Time
-                    if (smallText.length > 1) {
-                        (smallText[1] as HTMLElement).style.fontSize = '14px'; // from 12px (text-xs) to 14px (text-sm)
-                    }
-                    if (smallText.length > 2) {
-                        (smallText[2] as HTMLElement).style.fontSize = '13px'; // Slightly bigger for context
-                    }
-
-                } else if (!td.classList.contains('bg-muted/40')) {
-                    // This is an EMPTY or COVERED cell (not the Time Slot header cell)
-                    // Enforce the new ROW_HEIGHT_PIXELS_EXPORT height (96px) for alignment.
-                    td.style.minHeight = `${ROW_HEIGHT_PIXELS_EXPORT}px`;
-                    td.style.height = `${ROW_HEIGHT_PIXELS_EXPORT}px`; // Force height for empty cells
-                    td.style.padding = '4px'; 
-                }
-            });
-            // --- END FIX & SIZE INCREASE ---
-
-          } catch (_err) {
-            // noop
-          }
-        }
-
-        wrapper.appendChild(clone);
-
-        // Place off-screen to avoid affecting layout, but allow styles to apply
-        wrapper.style.position = 'fixed';
-        wrapper.style.left = '-9999px';
-        document.body.appendChild(wrapper);
-
-        const canvas = await html2canvas(wrapper, { scale: isSchedulesTable ? 3 : 2.5, useCORS: true });
-        const imgData = canvas.toDataURL('image/png');
-
-        // Clean up temporary wrapper
-        document.body.removeChild(wrapper);
-
-        const pdf = new jsPDF({ orientation: isSchedulesTable ? 'landscape' : 'portrait', unit: 'pt', format: 'a4' });
-        const pageW = pdf.internal.pageSize.getWidth();
-        const pageH = pdf.internal.pageSize.getHeight();
-        // Use a smaller margin for schedules (6mm) to make the table larger, otherwise 10mm
-        const mmToPt = (mm: number) => mm * 2.83464567;
-        const marginMm = isSchedulesTable ? 6 : 10;
-        const marginPt = mmToPt(marginMm);
-
-        const availableW = pageW - marginPt * 2;
-        const availableH = pageH - marginPt * 2;
-
-        const imgW = canvas.width;
-        const imgH = canvas.height;
-        const ratio = Math.min(availableW / imgW, availableH / imgH);
-        const drawW = imgW * ratio;
-        const drawH = imgH * ratio;
-
-        const x = marginPt + (availableW - drawW) / 2;
-        // Align image to top inside the printable area (do not vertically center)
-        const y = marginPt;
-
-        pdf.addImage(imgData, 'PNG', x, y, drawW, drawH);
-        pdf.save(`${activeTab}-report.pdf`);
-        return;
-      } catch (e) {
-        // If imports fail (packages not installed), fall back to print-window approach
-        console.warn('html2canvas/jsPDF not available, falling back to print window. Error:', e);
-        const el = document.getElementById('report-content');
-        if (!el) { window.print(); return; }
-        // Prefer the VISIBLE table HTML if present
-        const tables = Array.from(el.querySelectorAll('table')) as HTMLElement[];
-        const visibleTable = tables.find(t => {
-          const rects = t.getClientRects();
-          return rects && rects.length > 0 && Array.from(rects).some(r => r.width > 0 && r.height > 0);
-        }) || (tables.length ? tables[0] : null);
-        const isSchedulesFallback = activeTab === 'schedules' && !!visibleTable;
-        const contentHtml = headerHtml + (visibleTable ? visibleTable.outerHTML : el.innerHTML);
-        const w = window.open('', '_blank');
-        if (!w) { alert('Unable to open print window (popup blocked).'); return; }
-        const styles = Array.from(document.querySelectorAll('link[rel="stylesheet"], style')).map(n => n.outerHTML).join('\n');
-        // Choose landscape and slightly smaller margins for schedules fallback so table fits wider
-        const pageCss = isSchedulesFallback
-          ? `<style>@page { size: A4 landscape; margin: 6mm; } @media print { body { -webkit-print-color-adjust: exact; padding: 6mm; box-sizing: border-box; font-size:12px; } table { width: 100%; border-collapse: collapse; } table th, table td { padding: 8px 6px; font-size:12px; } thead { display: table-header-group; } tbody { display: table-row-group; } tr { page-break-inside: avoid; } }</style>`
-          : `<style>@page { size: A4 portrait; margin: 10mm; } @media print { body { -webkit-print-color-adjust: exact; padding: 10mm; box-sizing: border-box; } table { width: 100%; border-collapse: collapse; } thead { display: table-header-group; } tbody { display: table-row-group; } tr { page-break-inside: avoid; } }</style>`;
-
-        w.document.write(`<html><head><title>Report</title>${pageCss}${styles}</head><body>${contentHtml}</body></html>`);
-        w.document.close();
-        w.focus();
-        setTimeout(() => { w.print(); w.close(); }, 600);
-      }
-    })();
+  type ExportPayload = {
+    title: string;
+    generatedAt: string;
+    headers: string[];
+    rows: string[][];
+    cells?: Array<Array<{ text: string; rowSpan: number; colSpan: number }>>;
   };
 
-  // (Excel export removed as requested)
-  const exportCsv = () => {
-    const reportEl = document.getElementById("report-content");
-    if (!reportEl) return;
-
-    const visibleTable = Array.from(reportEl.querySelectorAll("table")).find((table) => {
+  const getVisibleTable = (root: HTMLElement) => {
+    return Array.from(root.querySelectorAll("table")).find((table) => {
       const rect = table.getBoundingClientRect();
       return rect.width > 0 && rect.height > 0;
     }) as HTMLTableElement | undefined;
+  };
 
-    if (!visibleTable) {
-      alert("No visible table found to export.");
-      return;
-    }
+  const normalizeCellText = (value: string) => value.replace(/\s+/g, " ").trim();
 
-    const rows = Array.from(visibleTable.querySelectorAll("tr"));
-    const csvRows = rows.map((row) => {
-      const cols = Array.from(row.querySelectorAll("th, td"));
-      return cols
-        .map((col) => {
-          const raw = (col.textContent || "").replace(/\s+/g, " ").trim();
-          const escaped = raw.replace(/"/g, '""');
-          return `"${escaped}"`;
-        })
-        .join(",");
+  const tableToExportRows = (table: HTMLTableElement) => {
+    const headerCells = Array.from(table.querySelectorAll("thead tr:first-child th"));
+    const headers = headerCells.map((col) => normalizeCellText(col.textContent || ""));
+    const spanTracker: Array<{ remaining: number }> = [];
+    const rows = Array.from(table.querySelectorAll("tbody tr")).map((row) => {
+      const outputRow: string[] = [];
+      let columnIndex = 0;
+
+      const fillCoveredColumns = () => {
+        while (spanTracker[columnIndex]?.remaining > 0) {
+          outputRow[columnIndex] = "";
+          spanTracker[columnIndex].remaining -= 1;
+          columnIndex += 1;
+        }
+      };
+
+      Array.from(row.querySelectorAll("td")).forEach((cell) => {
+        fillCoveredColumns();
+
+        const colSpan = Math.max(1, cell.colSpan || 1);
+        const rowSpan = Math.max(1, cell.rowSpan || 1);
+        outputRow[columnIndex] = normalizeCellText(cell.textContent || "");
+
+        for (let offset = 1; offset < colSpan; offset += 1) {
+          outputRow[columnIndex + offset] = "";
+        }
+
+        if (rowSpan > 1) {
+          for (let offset = 0; offset < colSpan; offset += 1) {
+            spanTracker[columnIndex + offset] = { remaining: rowSpan - 1 };
+          }
+        }
+
+        columnIndex += colSpan;
+      });
+
+      fillCoveredColumns();
+
+      while (outputRow.length < headers.length) outputRow.push("");
+      return outputRow.slice(0, headers.length);
     });
 
-    const blob = new Blob([csvRows.join("\n")], { type: "text/csv;charset=utf-8;" });
+    const cells = Array.from(table.querySelectorAll("tbody tr")).map((row) =>
+      Array.from(row.querySelectorAll("td")).map((cell) => ({
+        text: normalizeCellText(cell.textContent || ""),
+        rowSpan: Math.max(1, cell.rowSpan || 1),
+        colSpan: Math.max(1, cell.colSpan || 1),
+      }))
+    );
+
+    return { headers, rows, cells };
+  };
+
+  const workloadToCsvRows = (reportEl: HTMLElement) => {
+    const rows = Array.from(reportEl.querySelectorAll("[data-workload-row='true']")) as HTMLElement[];
+    return [
+      ["Faculty", "Assigned Load", "Base Limit", "Overload Allowance", "Status"],
+      ...rows.map((row) => [
+        row.dataset.facultyName || "",
+        row.dataset.assignedLoad || "",
+        row.dataset.baseLimit || "",
+        row.dataset.overloadAllowance || "",
+        row.dataset.status || "",
+      ]),
+    ];
+  };
+
+  const getExportPayload = (): ExportPayload | null => {
+    const reportEl = document.getElementById("report-content");
+    if (!reportEl) return null;
+
+    const generatedAt = new Date().toLocaleString();
+
+    if (activeTab === "workloads") {
+      const workloadRows = workloadToCsvRows(reportEl);
+      if (workloadRows.length <= 1) {
+        alert("No workload data found to export.");
+        return null;
+      }
+      return {
+        title: REPORT_TAB_LABELS[activeTab],
+        generatedAt,
+        headers: workloadRows[0],
+        rows: workloadRows.slice(1),
+      };
+    }
+
+    const visibleTable = getVisibleTable(reportEl);
+    if (!visibleTable) {
+      alert("No visible table found to export.");
+      return null;
+    }
+
+    const { headers, rows, cells } = tableToExportRows(visibleTable);
+    return {
+      title: REPORT_TAB_LABELS[activeTab],
+      generatedAt,
+      headers,
+      rows,
+      cells,
+    };
+  };
+
+  const getExportHeaders = () => {
+    const accessToken = localStorage.getItem("accessToken");
+    return accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined;
+  };
+
+  const saveBlob = (data: BlobPart, filename: string, type: string) => {
+    const blob = data instanceof Blob ? data : new Blob([data], { type });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `${activeTab}-report.csv`;
+    link.download = filename;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+  };
+
+  const exportPdf = async () => {
+    const payload = getExportPayload();
+    if (!payload) return;
+
+    const response = await axios.post("reports/export/print", payload, {
+      responseType: "text",
+      headers: getExportHeaders(),
+    });
+
+    const w = window.open("", "_blank");
+    if (!w) {
+      alert("Unable to open print window. Please allow popups for this site.");
+      return;
+    }
+    w.document.write(response.data);
+    w.document.close();
+    w.focus();
+  };
+
+  const exportCsv = async () => {
+    const payload = getExportPayload();
+    if (!payload) return;
+
+    const response = await axios.post("reports/export/csv", payload, {
+      responseType: "blob",
+      headers: getExportHeaders(),
+    });
+
+    saveBlob(response.data, `${activeTab}-report.csv`, "text/csv;charset=utf-8;");
   };
 
 

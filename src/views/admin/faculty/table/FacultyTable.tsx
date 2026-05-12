@@ -30,7 +30,6 @@ import {
   KeyRound,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { AddFacultyButton } from "../modal/AddFacultyButton";
 import { SkeletonFacultyCard } from "./../SkeletonFacultyCard";
 import axios from "../../../../plugin/axios";
@@ -200,7 +199,9 @@ function FacultyTable() {
       Sunday: "Sun",
     };
 
+    const lines: string[] = [];
     const usedByDay: Record<string, TimeRange[]> = {};
+
     for (const row of schedules) {
       const day = row?.day;
       const start = row?.start_time ?? row?.start ?? "";
@@ -214,7 +215,6 @@ function FacultyTable() {
       usedByDay[day].sort((a, b) => timeToMinutes(a.start) - timeToMinutes(b.start));
     }
 
-    const lines: string[] = [];
     for (const day of dayOrder) {
       const base = Array.isArray(availabilityByDay?.[day]) ? availabilityByDay[day] : [];
       const used = usedByDay[day] || [];
@@ -655,19 +655,63 @@ function FacultyTable() {
                         const availability = facultyAvailabilityById[f.id];
                         if (!load) return <span className="text-xs text-muted-foreground">Loading...</span>;
                         const utilizationColor = load.utilization >= 80 ? "text-amber-700" : "text-emerald-700";
+                        const monitorStatus =
+                          load.availableHours <= 0
+                            ? { label: "No Availability", className: "bg-slate-100 text-slate-700" }
+                            : load.utilization >= 100
+                              ? { label: "Fully Used", className: "bg-red-100 text-red-700" }
+                              : load.utilization >= 80
+                                ? { label: "Near Limit", className: "bg-amber-100 text-amber-700" }
+                                : load.usedHours > 0
+                                  ? { label: "On Track", className: "bg-emerald-100 text-emerald-700" }
+                                  : { label: "No Load Yet", className: "bg-blue-100 text-blue-700" };
+                        const progressValue = Math.min(100, Math.max(load.usedHours > 0 ? 8 : 0, load.utilization));
+                        const progressColor =
+                          load.utilization >= 100
+                            ? "bg-red-500"
+                            : load.utilization >= 80
+                              ? "bg-amber-500"
+                              : load.usedHours > 0
+                                ? "bg-emerald-500"
+                                : "bg-blue-500";
                         const allLines = availability?.lines || [];
                         const isExpanded = !!expandedAvailabilityRows[f.id];
                         const visibleLines = isExpanded ? allLines : allLines.slice(0, 2);
                         const remainingLinesCount = Math.max(0, allLines.length - visibleLines.length);
                         return (
-                          <div className="space-y-1.5">
-                            <div className="flex items-center justify-between text-xs">
-                              <span className="text-muted-foreground">Used {load.usedHours.toFixed(1)}h / {load.availableHours.toFixed(1)}h</span>
+                          <div className="space-y-2 rounded-md bg-muted/30 p-2">
+                            <div className="flex items-center justify-between gap-2">
+                              <Badge className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${monitorStatus.className}`}>
+                                {monitorStatus.label}
+                              </Badge>
                               <span className={`font-semibold ${utilizationColor}`}>{load.utilization.toFixed(0)}%</span>
                             </div>
-                            <Progress value={load.utilization} className="h-2" />
-                            <p className="text-[11px] text-muted-foreground">Remaining: {load.remainingHours.toFixed(1)} hours</p>
-                            <div className="pt-1 border-t border-border/70 space-y-0.5">
+                            <div className="relative">
+                              <div className="h-4 overflow-hidden rounded-full bg-muted">
+                                <div
+                                  className={`h-full rounded-full transition-all ${progressColor}`}
+                                  style={{ width: `${progressValue}%` }}
+                                />
+                              </div>
+                              <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-[10px] font-bold text-foreground">
+                                {load.usedHours.toFixed(1)}h used
+                              </span>
+                            </div>
+                            <div className="grid grid-cols-3 gap-1 text-center text-[10px]">
+                              <div className="rounded border border-border bg-background px-1 py-1">
+                                <p className="font-semibold text-foreground">{load.usedHours.toFixed(1)}h</p>
+                                <p className="text-muted-foreground">Used Load</p>
+                              </div>
+                              <div className="rounded border border-border bg-background px-1 py-1">
+                                <p className="font-semibold text-foreground">{load.availableHours.toFixed(1)}h</p>
+                                <p className="text-muted-foreground">Available</p>
+                              </div>
+                              <div className="rounded border border-border bg-background px-1 py-1">
+                                <p className="font-semibold text-foreground">{load.remainingHours.toFixed(1)}h</p>
+                                <p className="text-muted-foreground">Remain</p>
+                              </div>
+                            </div>
+                            <div className="space-y-0.5 border-t border-border/70 pt-1">
                               {visibleLines.length > 0 ? (
                                 <>
                                   {visibleLines.map((line) => (

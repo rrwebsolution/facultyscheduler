@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 // FIX: Update imports to use the centralized types file
-import type { Room, ScheduleEntry, Subject } from "../classroom"; 
+import type { Room, ScheduleEntry, Subject, FacultyLoadEntry } from "../classroom";
 import { Skeleton } from "@/components/ui/skeleton";
 import ViewScheduleModal from "../modal/ViewScheduleModal";
 
@@ -19,20 +19,11 @@ type RoomTableProps = {
   roomsData: Room[];
   scheduleData: ScheduleEntry[];
   subjectsData: Subject[];
+  facultyLoadingData: FacultyLoadEntry[];
   onEdit: (room: Room) => void;
-  onDelete: (roomId: number) => void; // This prop triggers the delete confirmation
+  onDelete: (roomId: number) => void;
   onManageAvailability: (room: Room) => void;
   isLoading: boolean;
-};
-
-// --- Helper Functions ---
-const getSubjectCountForRoom = (roomId: number, schedule: ScheduleEntry[]): number => {
-  const uniqueSubjects = new Set(
-    schedule
-      .filter(s => s.faculty_loading.room.id === roomId) 
-      .map(s => s.faculty_loading.subject.id)
-  );
-  return uniqueSubjects.size;
 };
 
 // Skeleton Component para sa loading state
@@ -55,7 +46,7 @@ const SkeletonRoomRow = () => (
 );
 
 // --- Main Component ---
-function RoomTable({ roomsData, scheduleData, onEdit, onDelete, onManageAvailability, isLoading }: RoomTableProps) {
+function RoomTable({ roomsData, scheduleData, facultyLoadingData, onEdit, onDelete, onManageAvailability, isLoading }: RoomTableProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [filters, setFilters] = useState({ type: "All" });
   const [currentPage, setCurrentPage] = useState(1);
@@ -70,6 +61,19 @@ function RoomTable({ roomsData, scheduleData, onEdit, onDelete, onManageAvailabi
       setSelectedRoom(room);
       setIsViewModalOpen(true);
   };
+
+  // Count unique subjects per room from faculty loading (comprehensive, not filter-dependent)
+  const subjectCountByRoom = useMemo(() => {
+    const map = new Map<number, Set<number>>();
+    for (const load of facultyLoadingData) {
+      const roomId = load.room_id ?? load.room?.id;
+      const subjectId = load.subject_id ?? load.subject?.id;
+      if (!roomId || !subjectId) continue;
+      if (!map.has(roomId)) map.set(roomId, new Set());
+      map.get(roomId)!.add(subjectId);
+    }
+    return map;
+  }, [facultyLoadingData]);
 
   const filteredData = useMemo(() => {
     return roomsData
@@ -131,7 +135,7 @@ function RoomTable({ roomsData, scheduleData, onEdit, onDelete, onManageAvailabi
                 <TableRow><TableCell colSpan={6} className="text-center h-48 text-muted-foreground">No rooms found.</TableCell></TableRow>
               ) : (
                 paginatedData.map((room) => {
-                  const subjectCount = getSubjectCountForRoom(room.id, scheduleData);
+                  const subjectCount = subjectCountByRoom.get(room.id)?.size ?? 0;
                   const isActive = room.status === 0;
                   return (
                     <TableRow key={room.id} className="hover:bg-muted">

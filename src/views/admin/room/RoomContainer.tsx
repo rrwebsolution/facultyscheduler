@@ -531,10 +531,11 @@ function RoomContainer({ mode = "both" }: { mode?: "both" | "classrooms" | "sche
               roomsData={cachedRooms as Room[]}
               scheduleData={schedules}
               subjectsData={subjects}
+              facultyLoadingData={cachedFacultyLoading as FacultyLoadEntry[]}
               onEdit={handleEditRoom}
               onDelete={openDeleteConfirm}
-              onManageAvailability={handleManageAvailability} 
-              isLoading={isLoading} 
+              onManageAvailability={handleManageAvailability}
+              isLoading={isLoading}
             />
           </TabsContent>
 
